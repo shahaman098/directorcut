@@ -23,7 +23,7 @@ npm start
 
 In OBS, add a **Browser Source** with URL `http://localhost:3000/overlay`, width **1920**, height **1080**. Keep the background transparent. Enable **Control audio via OBS** to mix the sting, and keep the source loaded while idle. The overlay occupies zero visible pixels between scenes. OBS Browser Sources normally allow autoplay; if your browser blocks WebAudio, interact with the source and click the **🔊 Click to enable sound** button during a scene. In a regular browser, that click may be required once per page load.
 
-Open `http://localhost:3000/control`, choose a treatment (or press `1`–`5`), and press **🎬 TRIGGER TEST CUTSCENE** (or `Enter`). The console embeds a muted, true-scale preview of the overlay, shows the scene that is rolling with its time remaining, keeps a log of recent takes, and warns you when no OBS overlay is connected. Then try `!cutscene anime` in Twitch chat.
+Open `http://localhost:3000/control`, choose a treatment (or press `1`–`5`), and press **🎬 TRIGGER TEST CUTSCENE** (or `Enter`). The console has a muted, true-scale **Program** monitor with an on-air tally, the live scene's details and time remaining, a session history table, server metrics, and a warning when no OBS overlay is connected. Then try `!cutscene anime` in Twitch chat.
 
 ## Commands
 
@@ -95,9 +95,9 @@ The server binds to loopback (`127.0.0.1`) for local OBS use. Keep the unauthent
 | `GET /` | Landing page and production links |
 | `GET /overlay` | Transparent browser-source overlay |
 | `GET /overlay?debug=1` | Overlay with WS state, last scene ID, and health round-trip latency during playback |
-| `GET /overlay?backdrop=1` | Overlay over a stand-in gameplay backdrop for browser rehearsal |
+| `GET /overlay?backdrop=1` | Overlay over a stand-in gameplay backdrop for browser rehearsal (`backdrop=checker` shows a transparency checkerboard) |
 | `GET /overlay?preview=1` | Muted overlay used by the console monitor; never plays the sting |
-| `GET /control` | Operator console: style cards, keyboard shortcuts, cooldown meter, muted live preview, now-rolling card, recent takes, no-overlay warning |
+| `GET /control` | Operator console: style presets (`1`–`5`, `Enter`), cooldown, muted program monitor with tally, live scene details, session history, no-overlay warning |
 | `GET /healthz` | `{ok, channel, model, uptimeSec, cutscenesServed, wsClients, previewClients, rolling}`; `wsClients` counts real overlays only |
 | `POST /api/trigger` | `{style?, user?}` → `202` accepted, `429` cooldown/busy/full, `400` invalid input |
 | `WS /overlay?role=overlay\|preview\|control` | `hello` with channel config and style metadata, followed by `cutscene`, `idle`, or `dropped` frames. `role` defaults to `overlay` |
@@ -118,7 +118,7 @@ Install dependencies before running `npm test`. The suite is verified green (18/
 
 ## Built with OpenAI Codex
 
-Built with **OpenAI Codex**, from the director and rehearsal pipeline to the broadcast package and procedural audio. Codex session: `01a19dc4-534f-7690-b36b-33615188f337`. Post-build human direction passes: OBS-safe compositing (blend modes flattened), a `?backdrop=1` rehearsal backdrop, and WebSocket late-join scene replay. A later UI/UX pass, made with Claude Code, redesigned the operator console and landing page and added the overlay timecode, progress line, long-caption sizing, and muted preview mode.
+Built with **OpenAI Codex**, from the director and rehearsal pipeline to the broadcast package and procedural audio. Codex session: `01a19dc4-534f-7690-b36b-33615188f337`. Post-build human direction passes: OBS-safe compositing (blend modes flattened), a `?backdrop=1` rehearsal backdrop, and WebSocket late-join scene replay. A later UI/UX pass, made with Claude Code, redesigned the operator console and landing page and restrained the overlay chrome (timecode, time-remaining line, film-style credits, word-by-word caption reveal, long-caption sizing, muted preview mode).
 
 ## Hackathon submission notes
 

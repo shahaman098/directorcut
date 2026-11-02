@@ -9,7 +9,7 @@ import { isStyle, STYLES } from './styles.js';
 
 const publicDir = path.resolve(fileURLToPath(new URL('../public/', import.meta.url)));
 const ROLES = new Set(['overlay', 'preview', 'control']);
-const STYLE_LIST = Object.entries(STYLES).map(([key, { label, badge, description }]) => ({ key, label, badge, description }));
+const STYLE_LIST = Object.entries(STYLES).map(([key, { label, badge, sting, description }]) => ({ key, label, badge, sting, description }));
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
 /** One active generation/playback, at most two waiting requests. */

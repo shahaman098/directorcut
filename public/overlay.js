@@ -8,7 +8,7 @@
   const preview = params.has('preview');
   const role = ['overlay', 'preview', 'control'].includes(params.get('role')) ? params.get('role') : (preview ? 'preview' : 'overlay');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const labels = { noir: 'A case for the clip archives', anime: 'The awakening of chat', hollywood: 'Every moment has a movie', baywatch: 'Heroes move at half speed', sportscast: 'The play. The legend. The replay.' };
+  const STYLE_KEYS = new Set(['noir', 'anime', 'hollywood', 'baywatch', 'sportscast']);
   let socket;
   let retry = 0;
   let reconnectTimer;
@@ -193,21 +193,29 @@
   });
 
   function renderScene(scene, id) {
-    if (!scene || !Object.hasOwn(labels, scene.style) || typeof scene.caption !== 'string') return;
+    if (!scene || !STYLE_KEYS.has(scene.style) || typeof scene.caption !== 'string') return;
     hideScene();
     lastId = String(id || 'unknown').slice(0, 8);
     sceneNumber += 1;
     root.className = scene.style;
     $('badge').textContent = scene.badge;
-    $('style-label').textContent = `${scene.style.toUpperCase()} / DIR. AI`;
-    $('eyebrow').textContent = labels[scene.style];
-    $('caption').textContent = '';
-    $('caption').classList.remove('complete');
-    $('caption').classList.toggle('long', Array.from(scene.caption).length > 55);
-    $('caption').setAttribute('aria-label', scene.caption);
+    $('style-label').textContent = scene.style.toUpperCase();
+    // Words are built as separate nodes (textContent only) and revealed with a staggered fade, trailer-title style.
+    const caption = $('caption');
+    const words = scene.caption.slice(0, 90).split(/\s+/).filter(Boolean);
+    caption.className = Array.from(scene.caption).length > 55 ? 'long' : '';
+    caption.setAttribute('aria-label', scene.caption);
+    caption.replaceChildren(...words.flatMap((word, index) => {
+      const span = Object.assign(document.createElement('span'), { className: 'w', textContent: word });
+      span.setAttribute('aria-hidden', 'true');
+      span.style.transitionDelay = `${index * 70}ms`;
+      return index ? [document.createTextNode(' '), span] : [span];
+    }));
     $('sub-caption').textContent = scene.subCaption;
-    $('credit').textContent = scene.credit;
-    $('take').textContent = `TAKE ${String(sceneNumber).padStart(3, '0')} / LIVE`;
+    const split = String(scene.credit).indexOf(':');
+    $('credit-role').textContent = split > 0 ? scene.credit.slice(0, split).trim() : 'EXECUTIVE PRODUCER';
+    $('credit-name').textContent = split > 0 ? scene.credit.slice(split + 1).trim() : scene.credit;
+    $('take').textContent = String(sceneNumber).padStart(3, '0');
     $('audio-unlock').classList.remove('fading');
     updateDebug();
     root.hidden = false;
@@ -224,16 +232,7 @@
       // Web Animations API so the time-remaining cue still runs under reduced motion (it is informational, not decorative).
       progressAnimation = $('progress').animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration, easing: 'linear', fill: 'forwards' });
       schedule(() => root.classList.add('styled'), 200);
-      const characters = Array.from(scene.caption.slice(0, 90));
-      const type = (index) => {
-        $('caption').textContent = characters.slice(0, index).join('');
-        if (index < characters.length) schedule(() => type(index + 1), 40);
-        else $('caption').classList.add('complete');
-      };
-      schedule(() => {
-        if (reducedMotion) { $('caption').textContent = characters.join(''); $('caption').classList.add('complete'); }
-        else type(1);
-      }, 600);
+      schedule(() => caption.classList.add('in'), 600);
       schedule(() => root.classList.add('exiting'), duration - 800);
       schedule(hideScene, duration);
     }); });

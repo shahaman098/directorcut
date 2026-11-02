@@ -10,7 +10,7 @@
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent !important; }
     [hidden] { display: none !important; }
     #scene { position: fixed; inset: 0; color: #fff7e8; pointer-events: none; --accent: #e8bf75; --muted: #e0d5c3; }
-    .layer, .bar, .flash, .frame, .speedlines { position: absolute; inset: 0; }
+    .layer, .bar, .flash, .speedlines { position: absolute; inset: 0; }
     .layer { opacity: 0; transition: opacity .5s ease; will-change: opacity; }
     .vignette { background: radial-gradient(ellipse at 50% 40%, transparent 20%, #08080c55 62%, #000e 100%); }
     .tint { background: #3d32204d; }
@@ -20,36 +20,30 @@
     .bar.top { bottom: auto; transform: translateY(-101%); border-bottom: 1px solid #ffffff1a; }
     .bar.bottom { top: auto; transform: translateY(101%); border-top: 1px solid #ffffff1a; }
     .bar-content { height: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 4vw; font-size: clamp(9px,.72vw,15px); letter-spacing: .26em; }
-    .wordmark { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(14px,1.4vw,28px); letter-spacing: -.055em; font-style: italic; }
-    .wordmark b { color: var(--accent); }
+    .wordmark { display: flex; align-items: center; gap: .8em; font: 700 clamp(9px,.78vw,16px) system-ui, sans-serif; letter-spacing: .24em; color: #f2efe9; }
+    .wordmark svg { width: 1.5em; height: 1.5em; color: var(--accent); }
     .top-right { display: flex; align-items: center; gap: 1.6vw; }
     #timecode { color: #8f8d89; font-variant-numeric: tabular-nums; letter-spacing: .14em; }
     #timecode::before { content: 'TC'; color: var(--accent); margin-right: .9em; }
     .progress { position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--accent); transform-origin: left center; transform: scaleX(0); opacity: .85; }
-    .top-note { display: flex; align-items: center; gap: 1.2vw; color: #b5b3b0; }
-    .top-note::before { content: ''; width: 2vw; height: 1px; background: var(--accent); }
-    .frame { inset: 15vh 2.1vw; border-left: 1px solid #ffffff26; border-right: 1px solid #ffffff26; opacity: 0; transition: opacity .5s; }
-    .frame::before, .frame::after { content: '+'; position: absolute; font: 18px monospace; color: #ffffff60; left: -6px; top: -12px; }
-    .frame::after { left: auto; top: auto; right: -6px; bottom: -12px; }
-    .frame, .speedlines, .scoreboard, .flash, #sub-caption { will-change: transform, opacity; }
+    .speedlines, .scoreboard, .flash, #sub-caption { will-change: transform, opacity; }
     .flash { z-index: 9; background: #fff; opacity: 0; }
     .badge-row { position: absolute; z-index: 4; top: 16.5vh; left: 5vw; display: flex; gap: 1.1vw; align-items: center; opacity: 0; transform: translateY(-12px); transition: opacity .4s .4s, transform .4s .4s; will-change: opacity, transform; }
     .badge { display: flex; align-items: center; gap: .65em; padding: .65em .9em; background: #f8f4eb; color: #101114; font: 900 clamp(12px,1.1vw,23px) 'Arial Black', Impact, sans-serif; letter-spacing: .08em; box-shadow: 5px 5px 0 #0005; }
     .red-dot { width: .5em; height: .5em; border-radius: 50%; background: #e53b3b; animation: blink 1s step-end infinite; }
     .style-label { font-size: clamp(9px,.8vw,16px); letter-spacing: .2em; font-weight: 700; text-shadow: 0 2px 8px #000; }
     .caption-block { z-index: 4; position: absolute; bottom: 21vh; left: 7vw; width: 86vw; text-align: center; opacity: 0; transform: translateY(18px); transition: opacity .4s .6s, transform .55s .6s; will-change: transform, opacity; }
-    .eyebrow { color: var(--accent); font-size: clamp(9px,.75vw,16px); letter-spacing: .38em; text-transform: uppercase; margin-bottom: 2.4vh; }
-    .eyebrow::before, .eyebrow::after { content: '—'; padding: 0 1.5em; }
     h1 { font: 400 clamp(28px,7vw,136px)/1.02 Georgia, 'Times New Roman', serif; letter-spacing: -.045em; text-shadow: 0 4px 3px #0009, 0 8px 50px #000d; margin: 0; overflow-wrap: anywhere; text-wrap: balance; }
     h1.long { font-size: clamp(24px,5.2vw,100px); }
     .sportscast h1.long { font-size: clamp(22px,4.3vw,84px); }
-    #caption::after { content: ''; display: inline-block; width: .035em; height: .7em; margin-left: .08em; background: var(--accent); animation: blink .6s step-end infinite; }
-    #caption.complete::after { display: none; }
-    #sub-caption { color: var(--muted); font: 500 clamp(12px,2.2vw,43px)/1.4 system-ui, sans-serif; letter-spacing: .15em; text-transform: uppercase; margin: 2.8vh 0 0; opacity: 0; transition: opacity .7s 1.8s; text-shadow: 0 2px 12px #000; }
-    .credit { color: var(--accent); font: 600 clamp(10px,1.05vw,23px)/1.5 system-ui,sans-serif; letter-spacing: .13em; text-align: right; opacity: 0; transform: translateY(12px); transition: opacity .6s 1.2s, transform .6s 1.2s; will-change: opacity, transform; }
-    .credit::before, .credit::after { content: '✦'; padding: 0 1em; color: #f9dda8; }
-    .take { color: #9c9b98; font-size: clamp(8px,.65vw,14px); letter-spacing: .18em; }
-    .take strong { color: #eee8db; font-weight: 500; }
+    #caption .w { display: inline-block; opacity: 0; transform: translateY(.18em); transition: opacity .5s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
+    #caption.in .w { opacity: 1; transform: none; }
+    #sub-caption { color: var(--muted); font: 500 clamp(12px,1.9vw,37px)/1.4 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; margin: 2.8vh 0 0; opacity: 0; transition: opacity .7s 1.8s; text-shadow: 0 2px 12px #000; }
+    .credit, .take { display: flex; flex-direction: column; gap: .35em; font-family: system-ui, sans-serif; }
+    .credit small, .take small { font-size: clamp(7px,.58vw,12px); font-weight: 600; letter-spacing: .3em; color: #8e8c88; }
+    .credit b { font: 600 clamp(11px,1.15vw,24px)/1 system-ui, sans-serif; letter-spacing: .04em; color: var(--accent); }
+    .take b { font: 500 clamp(10px,.9vw,19px)/1 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; letter-spacing: .08em; color: #e8e4dc; }
+    .credit { text-align: right; align-items: flex-end; opacity: 0; transform: translateY(12px); transition: opacity .6s 1.2s, transform .6s 1.2s; will-change: opacity, transform; }
     .speedlines { opacity: 0; width: 150%; height: 150%; left: -25%; top: -25%; transform-origin: center; }
     .scoreboard { display: none; position: absolute; right: 5vw; top: 16.5vh; z-index: 4; background: #071b3b; border-top: 3px solid #46c9ff; padding: .7em 1.2em; font: 900 clamp(10px,1vw,22px) 'Arial Black', Impact, sans-serif; letter-spacing: .08em; }
     .scoreboard small { display: block; color: #78d8ff; font: 600 .55em system-ui; letter-spacing: .18em; margin-top: .5em; }
@@ -59,7 +53,7 @@
     #audio-unlock:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     #debug { right: 4vw; bottom: 13.5vh; color: #bfffc5; }
     #scene.active .bar { transform: translateY(0); }
-    #scene.active .vignette, #scene.active .frame { opacity: 1; }
+    #scene.active .vignette { opacity: 1; }
     #scene.active #grain { opacity: .07; }
     #scene.styled .tint, #scene.styled .light { opacity: 1; }
     #scene.active .badge-row, #scene.active .caption-block, #scene.active .credit { opacity: 1; transform: translateY(0); }
@@ -87,11 +81,9 @@
     .sportscast .light { background: linear-gradient(120deg, transparent 50%, #118dff33); }
     .sportscast .caption-block { text-align: left; left: 5vw; width: 90vw; padding: 2.5vh 2vw; border-left: .45vw solid #62d4ff; background: linear-gradient(90deg, #061b3be8, #07467bcc, #07467b00); }
     .sportscast h1 { font: 900 clamp(26px,5.6vw,108px)/1.02 'Arial Black', Impact, sans-serif; text-transform: uppercase; letter-spacing: -.045em; }
-    .sportscast .eyebrow { margin-bottom: 1vh; }
-    .sportscast .eyebrow::before, .sportscast .eyebrow::after { display: none; }
     .sportscast #sub-caption { font-size: clamp(11px,1.5vw,30px); }
     #scene.sportscast.active .scoreboard { display: block; animation: chip-in .4s .4s both; }
-    #scene.exiting .layer, #scene.exiting .frame, #scene.exiting .speedlines, #scene.exiting .scoreboard { opacity: 0; transition: opacity .65s; }
+    #scene.exiting .layer, #scene.exiting .speedlines, #scene.exiting .scoreboard { opacity: 0; transition: opacity .65s; }
     #scene.exiting .scoreboard { animation: none; }
     #scene.exiting #grain, #scene.anime.styled.exiting .speedlines { opacity: 0; animation: none; transition: opacity .65s; }
     #scene.exiting .badge-row, #scene.exiting .caption-block, #scene.exiting .credit { opacity: 0; transform: translateY(15px); transition: opacity .3s, transform .4s; }
@@ -101,7 +93,7 @@
     @keyframes flash { from { opacity: .85; } to { opacity: 0; } }
     @keyframes rotate-lines { from { transform: rotate(0deg); } to { transform: rotate(24deg); } }
     @keyframes chip-in { from { opacity: 0; transform: translateX(15px); } to { opacity: 1; transform: translateX(0); } }
-    @media (max-width: 600px) { .top-note, #timecode { display: none; } .credit { letter-spacing: .04em; } .credit::before, .credit::after { padding: 0 .4em; } .take { max-width: 20vw; } .badge-row { gap: 3vw; } }
+    @media (max-width: 600px) { #timecode { display: none; } .badge-row { gap: 3vw; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0s !important; } .flash { display: none; } }
   </style>
 </head>
@@ -115,12 +107,11 @@
       </g>
     </svg>
     <canvas id="grain" class="layer" width="480" height="270" aria-hidden="true"></canvas>
-    <div class="frame" aria-hidden="true"></div>
-    <div class="bar top"><div class="bar-content"><span class="wordmark">DirectorCut<b>.</b></span><span class="top-note">A CHAT ORIGINAL PICTURE</span><span class="top-right"><span id="channel">LIVE CINEMA</span><span id="timecode" aria-hidden="true">00:00:00:00</span></span></div></div>
+    <div class="bar top"><div class="bar-content"><span class="wordmark"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="1.5" width="13" height="3.5" fill="currentColor"/><rect x="1.5" y="11" width="13" height="3.5" fill="currentColor"/></svg>DIRECTORCUT</span><span class="top-right"><span id="channel">LIVE CINEMA</span><span id="timecode" aria-hidden="true">00:00:00:00</span></span></div></div>
     <div class="badge-row"><span class="badge"><i class="red-dot" aria-hidden="true"></i><span id="badge">REPLAY</span></span><span class="style-label" id="style-label">NOIR / DIR. AI</span></div>
     <div class="scoreboard">CHAT <span aria-hidden="true">//</span> 01<small>INSTANT CLASSIC · LIVE</small></div>
-    <section class="caption-block"><div class="eyebrow" id="eyebrow">Every moment has a movie</div><h1 id="caption"></h1><p id="sub-caption"></p></section>
-    <div class="bar bottom"><i class="progress" id="progress" aria-hidden="true"></i><div class="bar-content"><span class="take">ORIGINAL MOMENT<br><strong id="take">TAKE 001 / LIVE</strong></span><span class="credit" id="credit"></span></div></div>
+    <section class="caption-block"><h1 id="caption"></h1><p id="sub-caption"></p></section>
+    <div class="bar bottom"><i class="progress" id="progress" aria-hidden="true"></i><div class="bar-content"><span class="take"><small>TAKE</small><b id="take">001</b></span><span class="credit"><small id="credit-role">EXECUTIVE PRODUCER</small><b id="credit-name"></b></span></div></div>
     <div class="flash" aria-hidden="true"></div>
     <button id="audio-unlock" type="button" hidden>🔊 Click to enable sound</button>
     <output id="debug" hidden></output>
@@ -129,8 +120,13 @@
     // Rehearsal backdrop: ?backdrop=1 paints a stand-in "gameplay" layer so the
     // overlay can be previewed in a plain browser (OBS composites over real gameplay).
     // ?preview=1 (used by the operator console) mutes the sting.
-    if (new URLSearchParams(location.search).has('backdrop')) {
-      document.write('<style>body::after{content:\'\';position:fixed;inset:0;z-index:-1;background:linear-gradient(135deg,#123a6b,#7a1f4c,#c96f1f) center/cover}</style>');
+    // ?backdrop=checker paints the standard transparency checkerboard (used by the console's program monitor).
+    const backdrop = new URLSearchParams(location.search).get('backdrop');
+    if (backdrop !== null) {
+      const paint = backdrop === 'checker'
+        ? 'background:#141416 repeating-conic-gradient(#202024 0 25%,#141416 0 50%) 0 0/48px 48px'
+        : 'background:linear-gradient(135deg,#123a6b,#7a1f4c,#c96f1f) center/cover';
+      document.write(`<style>body::after{content:'';position:fixed;inset:0;z-index:-1;${paint}}</style>`);
     }
   </script>
   <script src="/overlay.js" defer></script>
