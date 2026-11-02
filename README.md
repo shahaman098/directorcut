@@ -84,10 +84,23 @@ All secrets stay in `.env`, which is ignored by Git. `.env.example` contains the
 | `MODERATION` | `auto` | `auto` checks OpenAI captions against the moderation API (fail closed); `off` skips it — the blocklist always applies |
 | `TRIGGER_ROLE` | `everyone` | Minimum chat rank for `!cutscene`: `everyone`, `subs`, `vips`, or `mods` |
 | `BLOCKLIST_FILE` | Empty | Optional UTF-8 file, one blocked term per line, merged with the built-in list |
+| `OBS_URL` | Empty | OBS WebSocket v5 URL (e.g. `ws://127.0.0.1:4455`); enables the vision director and the replay trigger |
+| `OBS_PASSWORD` | Empty | OBS WebSocket password, only when OBS requires one |
+| `OBS_SOURCE_NAME` | Empty | Screenshot a specific source instead of the whole program scene |
+| `OBS_TIMEOUT_MS` | `1500` | Whole-session budget for each OBS capture or replay save |
+| `DIRECTOR_VISION` | `off` | `on` sends the captured live frame to a vision-capable director model |
+| `TWITCH_CLIENT_ID` | Empty | Twitch app Client-Id; with a user token, enables Channel Points triggers |
+| `TWITCH_USER_TOKEN` | Empty | Broadcaster user token with `channel:read:redemptions` and `channel:manage:redemptions` |
+| `TWITCH_BROADCASTER_ID` | Empty | Optional; resolved from the token via `/helix/users` when blank |
+| `REWARD_TITLES` | Empty | Comma-separated reward titles to react to; blank reacts to every redemption |
 
 For Ollama, set `LLM_BASE_URL=http://localhost:11434/v1`, choose an installed model with `LLM_MODEL`, and leave `LLM_API_KEY` empty. The client sends OpenAI-compatible chat completions with JSON output requested; providers that reject `response_format` are retried once without it. Missing local models or an unreachable endpoint use fallback scripts.
 
 Hype counts whole-word occurrences of `LUL POG POGGERS KEKW W CLIP LETSGO EZ`, case insensitively, in a rolling 30-second window. The exact 30-second expiry is excluded. At the threshold, an idle and cooled-down director starts `sportscast`, credits **EXECUTIVE PRODUCER: CHAT ITSELF**, and debounces further automatic scenes for 60 seconds.
+
+## Vision director, replay trigger, and Channel Points
+
+With `OBS_URL` set, DirectorCut speaks the OBS WebSocket v5 protocol in short, deadline-bounded sessions. `DIRECTOR_VISION=on` captures the live program frame (or `OBS_SOURCE_NAME`) right before each generation, so the director reacts to what is actually on screen; a slow or missing capture silently degrades to the text-only director. `POST /api/replay` saves the OBS replay buffer — the streamer keeps the clip — and cuts a `baywatch` slow-mo scene. Channel Points redemptions (when `TWITCH_CLIENT_ID` and `TWITCH_USER_TOKEN` are set) act as paid triggers: they queue like operator requests, and any redemption the queue cannot honor is refunded via Helix, so a viewer never loses points to a cooldown.
 
 ## Safety and moderation
 
@@ -105,8 +118,9 @@ The server binds to loopback (`127.0.0.1`) for local OBS use. Keep the unauthent
 | `GET /overlay?backdrop=1` | Overlay over a stand-in gameplay backdrop for browser rehearsal |
 | `GET /overlay?preview=1` | Muted overlay used by the console monitor; never plays the sting |
 | `GET /control` | Operator console: style cards, keyboard shortcuts, cooldown meter, muted live preview, now-rolling card, recent takes, no-overlay warning |
-| `GET /healthz` | `{ok, channel, model, uptimeSec, cutscenesServed, wsClients, previewClients, rolling}`; `wsClients` counts real overlays only |
+| `GET /healthz` | `{ok, channel, model, uptimeSec, cutscenesServed, wsClients, previewClients, rolling, obs}`; `wsClients` counts real overlays only |
 | `POST /api/trigger` | `{style?, user?}` → `202` accepted, `429` cooldown/busy/full, `400` invalid input |
+| `POST /api/replay` | Saves the OBS replay buffer and cuts a slow-mo scene; `202`, `429`, or `503` without OBS |
 | `WS /overlay?role=overlay\|preview\|control` | `hello` with channel config and style metadata, followed by `cutscene`, `idle`, or `dropped` frames. `role` defaults to `overlay` |
 
 ```sh
