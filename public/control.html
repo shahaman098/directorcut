@@ -3,123 +3,463 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DirectorCut · Operator console</title>
+  <meta name="color-scheme" content="dark">
+  <title>Control · DirectorCut</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1.5' y='1.5' width='13' height='13' rx='2' fill='none' stroke='%23fafafa' stroke-width='1.5'/%3E%3Crect x='1.5' y='1.5' width='13' height='3.5' fill='%23fafafa'/%3E%3Crect x='1.5' y='11' width='13' height='3.5' fill='%23fafafa'/%3E%3C/svg%3E">
   <style>
-    :root { color-scheme: dark; --gold: #e8bf75; --muted: #97999e; }
+    :root {
+      color-scheme: dark;
+      --bg: #09090b; --surface: #111113; --surface-2: #18181b; --hover: #1f1f23;
+      --border: #26262b; --border-strong: #3a3a41;
+      --text: #f4f4f5; --text-2: #a1a1aa; --text-3: #71717a;
+      --live: #ef4444; --ok: #22c55e; --warn: #f59e0b; --focus: #60a5fa;
+      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+      --radius: 6px;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: #0d0e10; color: #f3eee5; font: 14px/1.6 system-ui, sans-serif; }
-    body::before { content: ''; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 80% 0, #ba8b3d0e, transparent 60%); }
-    main { position: relative; max-width: 1000px; margin: auto; padding: 6vh 6vw 4vh; }
-    header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 28px; border-bottom: 1px solid #ffffff20; }
-    .wordmark { font: italic 30px Georgia, 'Times New Roman', serif; letter-spacing: -.06em; }
-    .wordmark span { color: var(--gold); }
-    .status { display: flex; align-items: center; gap: 9px; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
-    #dot { width: 7px; height: 7px; border-radius: 50%; background: #d77868; }
-    #dot.connected { background: #9cd9ae; box-shadow: 0 0 14px #9cd9ae40; }
-    .kicker { color: var(--gold); letter-spacing: .22em; font-size: 10px; margin: 55px 0 18px; text-transform: uppercase; }
-    h1 { font: 400 clamp(46px,7vw,76px)/1.05 Georgia, 'Times New Roman', serif; letter-spacing: -.05em; margin: 0; max-width: 640px; }
-    h1 em { color: var(--gold); }
-    .intro { color: var(--muted); max-width: 490px; margin: 22px 0 35px; }
-    .stats { display: grid; grid-template-columns: 1fr 1.3fr .7fr; border-top: 1px solid #ffffff20; border-bottom: 1px solid #ffffff20; padding: 23px 0; gap: 20px; }
-    .stat-label { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .18em; }
-    .stat-value { display: block; margin-top: 8px; font-size: 15px; overflow-wrap: anywhere; }
-    form { margin-top: 36px; }
-    .form-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    label, .reel { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; }
-    .reel { color: var(--muted); }
-    select { width: 100%; border: 1px solid #ffffff30; border-radius: 2px; background: #17181b; padding: 15px; color: #eee8db; font: 15px system-ui; cursor: pointer; }
-    #style-note { color: var(--muted); min-height: 23px; font-size: 12px; margin: 10px 0 22px; }
-    button { width: 100%; border: 1px solid var(--gold); border-radius: 2px; background: var(--gold); color: #16130d; font: 800 clamp(12px,2vw,16px) system-ui; letter-spacing: .1em; padding: 23px 10px; cursor: pointer; transition: opacity .2s, transform .2s; }
-    button:hover:enabled { transform: translateY(-2px); }
-    button:disabled { cursor: default; opacity: .45; }
-    :focus-visible { outline: 2px solid #fff3cd; outline-offset: 4px; }
-    #feedback { min-height: 26px; color: var(--gold); font-size: 12px; margin: 12px 0 25px; }
-    footer { border-top: 1px solid #ffffff20; padding-top: 22px; display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 11px; }
-    a { color: #e0d4bc; text-underline-offset: 4px; }
-    .obs { margin-top: 28px; color: var(--muted); font-size: 11px; }
-    code { color: #ccc6bc; }
-    @media (max-width: 520px) { .stats { grid-template-columns: 1fr; gap: 15px; } .stat-value { margin-top: 2px; } footer { flex-direction: column; } .kicker { margin-top: 35px; } }
-    @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+    button, input { font: inherit; color: inherit; }
+    a { color: inherit; }
+    :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid var(--border-strong); border-radius: 4px; font: 11px var(--mono); color: var(--text-2); background: var(--surface-2); }
+    .icon { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Top bar */
+    .topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px; height: 48px; padding: 0 16px; background: var(--bg); border-bottom: 1px solid var(--border); }
+    .logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; text-decoration: none; letter-spacing: -.01em; }
+    .logo svg { width: 18px; height: 18px; }
+    .divider { width: 1px; height: 20px; background: var(--border); }
+    .channel { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .spacer { flex: 1; }
+    .metrics { display: flex; align-items: center; margin: 0; }
+    .metrics div { display: flex; align-items: baseline; gap: 6px; padding: 0 14px; border-left: 1px solid var(--border); white-space: nowrap; }
+    .metrics dt { color: var(--text-3); font-size: 12px; }
+    .metrics dd { margin: 0; font-size: 12px; }
+    .conn { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border: 1px solid var(--border); border-radius: 99px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: none; }
+    .conn.ok .dot { background: var(--ok); }
+    .conn.down .dot { background: var(--live); }
+
+    /* Alert */
+    .alert { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 16px 16px 0; padding: 10px 12px; border: 1px solid #f59e0b4d; background: #f59e0b0f; border-radius: var(--radius); color: var(--text); }
+    .alert .icon { color: var(--warn); width: 16px; height: 16px; }
+    .alert p { margin: 0; flex: 1 1 320px; color: var(--text-2); }
+    .alert strong { color: var(--text); font-weight: 600; margin-right: 4px; }
+
+    /* Workspace */
+    .workspace { display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-areas: 'controls monitor' 'controls history'; gap: 16px; padding: 16px; max-width: 1600px; align-items: start; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; overflow: hidden; }
+    .controls { grid-area: controls; position: sticky; top: 64px; }
+    .monitor { grid-area: monitor; }
+    .history { grid-area: history; }
+    .panel-header { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-bottom: 1px solid var(--border); }
+    .panel-header h2 { margin: 0; font-size: 13px; font-weight: 600; }
+    .panel-header .meta { color: var(--text-3); font-size: 12px; }
+    .panel-header .actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--surface-2); color: var(--text); font-size: 12px; font-weight: 500; text-decoration: none; cursor: pointer; white-space: nowrap; }
+    .btn:hover { background: var(--hover); }
+    .btn.ghost { border-color: transparent; background: transparent; color: var(--text-2); }
+    .btn.ghost:hover { background: var(--surface-2); color: var(--text); }
+    span.btn.ghost, span.btn.ghost:hover { cursor: default; background: transparent; color: var(--text-3); }
+
+    /* Style list */
+    .styles { padding: 6px; display: grid; gap: 2px; }
+    .style-row { display: grid; grid-template-columns: 16px 10px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; padding: 8px; border-radius: 5px; cursor: pointer; }
+    .style-row:hover { background: var(--surface-2); }
+    .style-row input { position: absolute; opacity: 0; pointer-events: none; }
+    .radio { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border-strong); display: grid; place-items: center; }
+    .radio::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--bg); transform: scale(0); transition: transform .12s; }
+    .swatch { width: 10px; height: 10px; border-radius: 2px; background: var(--c); flex: none; }
+    .style-row .name { font-weight: 500; }
+    .style-row .sub { grid-column: 3; color: var(--text-3); font-size: 12px; }
+    .style-row kbd { grid-row: 1 / span 2; grid-column: 4; }
+    .style-row:has(input:checked) { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); }
+    .style-row:has(input:checked) .radio { border-color: var(--text); background: var(--text); }
+    .style-row:has(input:checked) .radio::after { transform: scale(1); }
+    .style-row:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+    .take { padding: 12px; border-top: 1px solid var(--border); }
+    #trigger { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 40px; border: 0; border-radius: var(--radius); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 600; cursor: pointer; }
+    #trigger:hover:enabled { background: #ffffff; }
+    #trigger:active:enabled { transform: translateY(1px); }
+    #trigger:disabled { background: var(--surface-2); color: var(--text-3); cursor: not-allowed; box-shadow: inset 0 0 0 1px var(--border); }
+    #trigger kbd { background: transparent; border-color: #0000002e; color: #00000080; }
+    #trigger:disabled kbd { display: none; }
+    #cooldown { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--text-2); transform-origin: left; transform: scaleX(0); }
+    .feedback { display: flex; align-items: center; gap: 8px; min-height: 20px; margin: 10px 2px 0; color: var(--text-2); font-size: 12px; }
+    .feedback.ok .dot { background: var(--ok); }
+    .feedback.busy .dot { background: var(--warn); }
+    .feedback.error { color: #fca5a5; }
+    .feedback.error .dot { background: var(--live); }
+    .help { margin: 0; padding: 10px 12px; border-top: 1px solid var(--border); color: var(--text-3); font-size: 12px; }
+    .help code { font: 12px var(--mono); color: var(--text-2); }
+
+    /* Monitor */
+    .tally { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 3px; font: 600 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; background: var(--surface-2); color: var(--text-3); box-shadow: inset 0 0 0 1px var(--border-strong); }
+    .tally.live { background: var(--live); color: #fff; box-shadow: none; }
+    .screen-wrap { display: flex; justify-content: center; background: #000; }
+    .screen { position: relative; width: min(100%, calc(62vh * 16 / 9)); aspect-ratio: 16 / 9; overflow: hidden; background: #000; }
+    .screen iframe { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }
+    .screen .standby { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 4px; background: #00000099; color: var(--text-2); font-size: 12px; text-align: center; padding: 16px; }
+    .screen .standby strong { color: var(--text); font-size: 13px; font-weight: 500; }
+    .screen.live .standby { display: none; }
+    .screen.live::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 2px var(--live); pointer-events: none; }
+    .details { display: grid; grid-template-columns: 96px minmax(0, 1fr); margin: 0; border-top: 1px solid var(--border); }
+    .details dt, .details dd { margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .details dt { color: var(--text-3); }
+    .details dd { overflow-wrap: anywhere; }
+    .details > :nth-last-child(-n+2) { border-bottom: 0; }
+    .style-cell { display: inline-flex; align-items: center; gap: 8px; }
+    .progress { display: flex; align-items: center; gap: 10px; }
+    .progress .track { flex: 1; height: 4px; border-radius: 2px; background: var(--surface-2); overflow: hidden; }
+    .progress .fill { display: block; height: 100%; background: var(--live); transform-origin: left; transform: scaleX(0); }
+    .empty-value { color: var(--text-3); }
+
+    /* History */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    th { color: var(--text-3); font-weight: 500; font-size: 12px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover td { background: #ffffff05; }
+    .col-n { width: 56px; } .col-time { width: 88px; } .col-style { width: 128px; } .col-prod { width: 160px; } .col-len { width: 72px; text-align: right; }
+    th.col-caption, .caption-cell { width: 100%; max-width: 0; }
+    tr.dropped td { color: var(--text-3); }
+    tr.dropped .caption-cell { color: #fca5a5; }
+    .empty-row td { color: var(--text-3); text-align: center; padding: 28px 12px; white-space: normal; }
+
+    /* Status bar */
+    .statusbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 16px; border-top: 1px solid var(--border); color: var(--text-3); font-size: 12px; }
+    .statusbar code { font: 12px var(--mono); color: var(--text-2); }
+    .statusbar .group { display: inline-flex; align-items: center; gap: 8px; }
+    .statusbar .spacer { flex: 1; }
+
+    @media (max-width: 1080px) { .metrics .opt { display: none; } }
+    @media (max-width: 860px) {
+      .workspace { grid-template-columns: 1fr; grid-template-areas: 'controls' 'monitor' 'history'; }
+      .controls { position: static; }
+      .metrics { display: none; }
+    }
+    @media (max-width: 560px) {
+      .topbar { gap: 10px; padding: 0 12px; }
+      .workspace { padding: 12px; gap: 12px; }
+      .alert { margin: 12px 12px 0; }
+      .col-time, .col-prod, .col-len { display: none; }
+      .statusbar .spacer { display: none; }
+    }
+    @media (hover: none) { .kbd-only { display: none !important; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
   </style>
 </head>
 <body>
-  <main>
-    <header><a class="wordmark" href="/" style="text-decoration:none">DirectorCut<span>.</span></a><span class="status"><i id="dot" aria-hidden="true"></i><span id="connection">Connecting</span></span></header>
-    <p class="kicker">Production desk / Operator 01</p>
-    <h1>Chat calls it.<br>You make it <em>cinema.</em></h1>
-    <p class="intro">Set the scene. Roll the sting. Give your next big moment the opening credits it deserves.</p>
-    <div class="stats" aria-label="Live server status">
-      <div><span class="stat-label">Channel</span><strong class="stat-value" id="channel">—</strong></div>
-      <div><span class="stat-label">AI director</span><strong class="stat-value" id="model">—</strong></div>
-      <div><span class="stat-label">Scenes served</span><strong class="stat-value" id="served">000</strong></div>
-    </div>
-    <form id="trigger-form">
-      <div class="form-head"><label for="style">Choose your treatment</label><span class="reel">5 lenses / 1 moment</span></div>
-      <select id="style" aria-describedby="style-note">
-        <option value="noir">01 / NOIR — The plot thickens</option>
-        <option value="anime">02 / ANIME — Enter the final form</option>
-        <option value="hollywood">03 / HOLLYWOOD — Cue the blockbuster</option>
-        <option value="baywatch">04 / BAYWATCH — Save it in slow motion</option>
-        <option value="sportscast">05 / SPORTSCAST — An instant classic</option>
-      </select>
-      <p id="style-note">Monochrome mystery. Every missed shot has a motive.</p>
-      <button id="trigger" type="submit" disabled>🎬 TRIGGER TEST CUTSCENE</button>
-      <p id="feedback" role="status" aria-live="polite">Waiting for the production desk…</p>
-    </form>
-    <footer><a href="/overlay" target="_blank" rel="noopener">Open clean overlay ↗</a><span id="clients">0 overlay connections</span><span>EXECUTIVE PRODUCED BY CHAT</span></footer>
-    <p class="obs">OBS browser source · <code id="overlay-url"></code> · 1920 × 1080<br>Enable “Control audio via OBS” to mix the synthesized sting.</p>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V3.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></symbol>
+    <symbol id="i-external" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5 7 9M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 16 16"><path d="M8 2 14.5 13.5h-13L8 2Z"/><path d="M8 6.5v3M8 11.5v.01"/></symbol>
+    <symbol id="i-volume-off" viewBox="0 0 16 16"><path d="M2.5 6v4h2.5L8.5 13V3L5 6H2.5ZM11 6l3 4M14 6l-3 4"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <a class="logo" href="/" aria-label="DirectorCut home">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="1.5" width="13" height="3.5" fill="currentColor"/><rect x="1.5" y="11" width="13" height="3.5" fill="currentColor"/></svg>
+      DirectorCut
+    </a>
+    <span class="divider" aria-hidden="true"></span>
+    <span class="channel" id="channel">—</span>
+    <span class="spacer"></span>
+    <dl class="metrics" aria-label="Server metrics">
+      <div class="opt"><dt>Model</dt><dd id="model">—</dd></div>
+      <div><dt>Overlays</dt><dd class="num" id="clients">—</dd></div>
+      <div><dt>Scenes</dt><dd class="num" id="served">—</dd></div>
+      <div class="opt"><dt>Uptime</dt><dd class="num" id="uptime">—</dd></div>
+    </dl>
+    <span class="conn" id="conn" role="status"><span class="dot" aria-hidden="true"></span><span id="conn-text">Connecting</span></span>
+  </header>
+
+  <div class="alert" id="no-overlay" role="alert" hidden>
+    <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+    <p><strong>No overlay connected.</strong>Scenes will not appear on stream. Add an OBS Browser Source pointing to <code class="obs-url num"></code> at 1920 × 1080.</p>
+    <button type="button" class="btn copy"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy URL</span></button>
+    <a class="btn" href="/overlay" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Open overlay</a>
+  </div>
+
+  <main class="workspace">
+    <section class="panel controls" aria-labelledby="style-title">
+      <form id="trigger-form">
+        <div class="panel-header"><h2 id="style-title">Style</h2><span class="meta">5 presets</span></div>
+        <div class="styles" id="styles" role="radiogroup" aria-labelledby="style-title">
+          <label class="style-row" style="--c:#ddd8c6"><input type="radio" name="style" value="noir" checked><span class="radio"></span><span class="swatch"></span><span class="name">Noir</span><kbd class="kbd-only">1</kbd><span class="sub">Replay · horror sting</span></label>
+          <label class="style-row" style="--c:#73fff7"><input type="radio" name="style" value="anime"><span class="radio"></span><span class="swatch"></span><span class="name">Anime</span><kbd class="kbd-only">2</kbd><span class="sub">Legendary · riser sting</span></label>
+          <label class="style-row" style="--c:#e8bf75"><input type="radio" name="style" value="hollywood"><span class="radio"></span><span class="swatch"></span><span class="name">Hollywood</span><kbd class="kbd-only">3</kbd><span class="sub">Legendary · brass sting</span></label>
+          <label class="style-row" style="--c:#ffc18c"><input type="radio" name="style" value="baywatch"><span class="radio"></span><span class="swatch"></span><span class="name">Baywatch</span><kbd class="kbd-only">4</kbd><span class="sub">Slow-mo · heroic sting</span></label>
+          <label class="style-row" style="--c:#62d4ff"><input type="radio" name="style" value="sportscast"><span class="radio"></span><span class="swatch"></span><span class="name">Sportscast</span><kbd class="kbd-only">5</kbd><span class="sub">Breaking · heroic sting</span></label>
+        </div>
+        <div class="take">
+          <button id="trigger" type="submit" disabled><span id="trigger-label">Trigger scene</span><kbd class="kbd-only">↵</kbd><span id="cooldown" aria-hidden="true"></span></button>
+          <p class="feedback" id="feedback" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="feedback-text">Connecting to server…</span></p>
+        </div>
+        <p class="help">Viewers trigger with <code>!cutscene [style]</code>. The cooldown is shared between chat and this console.</p>
+      </form>
+    </section>
+
+    <section class="panel monitor" aria-labelledby="monitor-title">
+      <div class="panel-header">
+        <h2 id="monitor-title">Program</h2>
+        <span class="tally" id="tally">Clear</span>
+        <div class="actions">
+          <span class="btn ghost" title="Preview audio is muted"><svg class="icon" aria-hidden="true"><use href="#i-volume-off"/></svg>Muted</span>
+          <a class="btn" href="/overlay?backdrop=1" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Pop out</a>
+        </div>
+      </div>
+      <div class="screen-wrap"><div class="screen" id="screen">
+        <iframe id="preview" src="/overlay?backdrop=checker&amp;preview=1&amp;role=preview" title="Overlay program preview" tabindex="-1" aria-hidden="true"></iframe>
+        <div class="standby"><strong>No scene on air</strong><span>The overlay stays transparent until the next trigger.</span></div>
+      </div></div>
+      <dl class="details" aria-live="polite">
+        <dt>Style</dt><dd id="d-style"><span class="empty-value">—</span></dd>
+        <dt>Caption</dt><dd id="d-caption"><span class="empty-value">—</span></dd>
+        <dt>Tagline</dt><dd id="d-sub"><span class="empty-value">—</span></dd>
+        <dt>Producer</dt><dd id="d-credit"><span class="empty-value">—</span></dd>
+        <dt>Remaining</dt><dd><span class="progress"><span class="track"><span class="fill" id="d-fill"></span></span><span class="num" id="d-remaining">—</span></span></dd>
+      </dl>
+    </section>
+
+    <section class="panel history" aria-labelledby="history-title">
+      <div class="panel-header"><h2 id="history-title">History</h2><span class="meta" id="history-count">This session</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th class="col-n">#</th><th class="col-time">Time</th><th class="col-style">Style</th><th class="col-caption">Caption</th><th class="col-prod">Producer</th><th class="col-len">Length</th></tr></thead>
+          <tbody id="history"><tr class="empty-row"><td colspan="6">No scenes yet this session.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
   </main>
+
+  <footer class="statusbar">
+    <span class="group">OBS source <code class="obs-url"></code><button type="button" class="btn ghost copy" aria-label="Copy overlay URL"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button></span>
+    <span>1920 × 1080 · transparent background · enable “Control audio via OBS”</span>
+    <span class="spacer"></span>
+    <span class="kbd-only"><kbd>1</kbd>–<kbd>5</kbd> style &nbsp; <kbd>↵</kbd> trigger</span>
+  </footer>
+
   <script>
     (() => {
+      'use strict';
       const $ = (id) => document.getElementById(id);
-      const notes = { noir: 'Monochrome mystery. Every missed shot has a motive.', anime: 'Magenta speedlines. Chat enters its final form.', hollywood: 'Golden light. Blockbuster stakes, questionable decisions.', baywatch: 'Sunset orange. A heroic rescue of the entire vibe.', sportscast: 'Electric blue. Instant analysis of an instant classic.' };
-      let online = false;
-      let sending = false;
-      let readyAt = 0;
-      $('overlay-url').textContent = `${location.origin}/overlay`;
-      $('style').addEventListener('change', () => { $('style-note').textContent = notes[$('style').value]; });
-      function updateButton() {
-        const remaining = Math.max(0, Math.ceil((readyAt - Date.now()) / 1000));
-        $('trigger').disabled = !online || sending || remaining > 0;
-        $('trigger').textContent = sending ? 'CALLING THE DIRECTOR…' : remaining > 0 ? `NEXT TAKE IN ${remaining}s` : '🎬 TRIGGER TEST CUTSCENE';
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Swatch colours mirror each preset's --accent in overlay.html.
+      const ACCENTS = { noir: '#ddd8c6', anime: '#73fff7', hollywood: '#e8bf75', baywatch: '#ffc18c', sportscast: '#62d4ff' };
+      const title = (text) => String(text).charAt(0).toUpperCase() + String(text).slice(1).toLowerCase();
+      const producer = (credit) => String(credit).replace(/^EXECUTIVE PRODUCER:\s*/, '');
+      const overlayUrl = `${location.origin}/overlay`;
+      const state = { online: false, sending: false, readyAt: 0, cooldownTotal: 0, overlays: null, scene: null, sceneEnds: 0, sceneTotal: 0, rows: [], seen: new Set(), count: 0 };
+      let retry = 0;
+
+      document.querySelectorAll('.obs-url').forEach((node) => { node.textContent = overlayUrl; });
+      document.querySelectorAll('.copy').forEach((button) => {
+        const label = button.querySelector('span');
+        const original = label.textContent;
+        button.addEventListener('click', async () => {
+          try { await navigator.clipboard.writeText(overlayUrl); label.textContent = 'Copied'; }
+          catch { window.prompt('Copy the overlay URL', overlayUrl); }
+          setTimeout(() => { label.textContent = original; }, 1500);
+        });
+      });
+
+      const radios = () => Array.from(document.querySelectorAll('input[name="style"]'));
+      const selectedStyle = () => radios().find((radio) => radio.checked)?.value || 'noir';
+      const el = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = text; return node; };
+      function feedback(text, tone = '') {
+        $('feedback').className = `feedback ${tone}`;
+        $('feedback-text').textContent = text;
       }
+      function styleCell(style) {
+        const cell = el('span', 'style-cell');
+        const swatch = el('span', 'swatch');
+        swatch.style.setProperty('--c', ACCENTS[style] || '#a1a1aa');
+        cell.append(swatch, el('span', '', title(style)));
+        return cell;
+      }
+
+      // Preset metadata comes from the server (src/styles.js); the static rows are the pre-connect fallback.
+      function renderStyles(styles) {
+        if (!Array.isArray(styles) || !styles.length) return;
+        const current = selectedStyle();
+        $('styles').replaceChildren(...styles.map((style, index) => {
+          const row = el('label', 'style-row');
+          row.style.setProperty('--c', ACCENTS[style.key] || '#a1a1aa');
+          row.title = style.description || '';
+          const input = Object.assign(document.createElement('input'), { type: 'radio', name: 'style', value: style.key, checked: style.key === current });
+          row.append(input, el('span', 'radio'), el('span', 'swatch'), el('span', 'name', title(style.label)), el('kbd', 'kbd-only', String(index + 1)), el('span', 'sub', `${title(style.badge)} · ${style.sting} sting`));
+          return row;
+        }));
+        if (!radios().some((radio) => radio.checked)) radios()[0].checked = true;
+      }
+
+      const put = (node, key, value) => { if (node[key] !== value) node[key] = value; };
+      function tick() {
+        const left = Math.max(0, state.readyAt - Date.now());
+        const seconds = Math.ceil(left / 1000);
+        put($('trigger'), 'disabled', !state.online || state.sending || seconds > 0);
+        put($('trigger-label'), 'textContent', !state.online ? 'Offline' : state.sending ? 'Sending…' : seconds > 0 ? `Cooldown ${seconds}s` : 'Trigger scene');
+        $('cooldown').style.transform = `scaleX(${state.cooldownTotal && left ? left / state.cooldownTotal : 0})`;
+        if (state.scene) {
+          const sceneLeft = Math.max(0, state.sceneEnds - Date.now());
+          $('d-fill').style.transform = `scaleX(${state.sceneTotal ? 1 - sceneLeft / state.sceneTotal : 1})`;
+          put($('d-remaining'), 'textContent', `${(sceneLeft / 1000).toFixed(1)}s`);
+        }
+      }
+
+      function renderStatus() {
+        const live = Boolean(state.scene);
+        $('conn').className = `conn ${state.online ? 'ok' : 'down'}`;
+        $('conn-text').textContent = state.online ? 'Connected' : 'Disconnected';
+        $('tally').className = `tally${live ? ' live' : ''}`;
+        $('tally').textContent = live ? 'On air' : 'Clear';
+        $('screen').classList.toggle('live', live);
+        $('no-overlay').hidden = !state.online || state.overlays !== 0;
+      }
+
+      function setValue(id, value) {
+        const node = $(id);
+        if (value === null) node.replaceChildren(el('span', 'empty-value', '—'));
+        else if (typeof value === 'string') node.textContent = value;
+        else node.replaceChildren(value);
+      }
+      function setScene(scene) {
+        state.scene = scene;
+        setValue('d-style', scene ? styleCell(scene.style) : null);
+        setValue('d-caption', scene ? scene.caption : null);
+        setValue('d-sub', scene ? scene.subCaption : null);
+        setValue('d-credit', scene ? producer(scene.credit) : null);
+        if (scene) {
+          const remaining = Number(scene.durationMs) || 8000;
+          state.sceneTotal = remaining + (Number(scene.elapsedMs) || 0);
+          state.sceneEnds = Date.now() + remaining;
+        } else {
+          $('d-fill').style.transform = 'scaleX(0)';
+          $('d-remaining').textContent = '—';
+        }
+        renderStatus();
+        tick();
+      }
+
+      const clock = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      function addRow(row) {
+        state.rows.unshift(row);
+        state.rows.length = Math.min(state.rows.length, 25);
+        $('history').replaceChildren(...state.rows.map((item) => {
+          const tr = el('tr', item.dropped ? 'dropped' : '');
+          const td = (className, content) => { const cell = el('td', className); if (typeof content === 'string') cell.textContent = content; else cell.append(content); return cell; };
+          const caption = td('caption-cell', item.caption);
+          caption.title = item.caption;
+          tr.append(td('col-n num', item.n), td('col-time num', item.time), td('col-style', item.style ? styleCell(item.style) : '—'), caption, td('col-prod', item.producer || '—'), td('col-len num', item.length || '—'));
+          return tr;
+        }));
+        $('history-count').textContent = `${state.count} scene${state.count === 1 ? '' : 's'} this session`;
+      }
+
+      function connect() {
+        const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/overlay?role=control`);
+        socket.addEventListener('open', () => { retry = 0; });
+        socket.addEventListener('message', (event) => {
+          let payload;
+          try { payload = JSON.parse(event.data); } catch { return; }
+          if (payload.type === 'hello') renderStyles(payload.styles);
+          if (payload.type === 'cutscene' && payload.scene) {
+            const scene = payload.scene;
+            setScene(scene);
+            if (!state.seen.has(payload.id)) {
+              state.seen.add(payload.id);
+              state.count += 1;
+              const total = (Number(scene.durationMs) || 8000) + (Number(scene.elapsedMs) || 0);
+              addRow({ n: String(state.count).padStart(3, '0'), time: clock(), style: scene.style, caption: scene.caption, producer: producer(scene.credit), length: `${(total / 1000).toFixed(1)}s` });
+            }
+            feedback('Scene on air', 'ok');
+          }
+          if (payload.type === 'idle') { setScene(null); if (state.online) feedback('Ready', 'ok'); }
+          if (payload.type === 'dropped') addRow({ n: '—', time: clock(), caption: 'Request dropped: queue full (2 waiting)', dropped: true });
+        });
+        socket.addEventListener('error', () => socket.close());
+        socket.addEventListener('close', () => { setTimeout(connect, Math.min(5000, 300 * 2 ** retry++)); });
+      }
+
+      const uptime = (seconds) => {
+        const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); const s = seconds % 60;
+        return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m ${String(s).padStart(2, '0')}s`;
+      };
       async function poll() {
         try {
           const response = await fetch('/healthz', { cache: 'no-store', signal: AbortSignal.timeout(3000) });
           if (!response.ok) throw new Error();
           const health = await response.json();
-          const wasOffline = !online;
-          online = Boolean(health.ok);
+          const wasOffline = !state.online;
+          state.online = Boolean(health.ok);
+          state.overlays = Number(health.wsClients) || 0;
           $('channel').textContent = `#${health.channel}`;
           $('model').textContent = health.model;
-          $('served').textContent = String(health.cutscenesServed).padStart(3, '0');
-          $('clients').textContent = `${health.wsClients} overlay connection${health.wsClients === 1 ? '' : 's'}`;
-          if (wasOffline && !sending) $('feedback').textContent = 'Standing by. Your next take is ready.';
-        } catch { online = false; $('feedback').textContent = 'Connection lost. Reconnecting to the production desk…'; }
-        $('dot').classList.toggle('connected', online);
-        $('connection').textContent = online ? 'Production live' : 'Offline';
-        updateButton();
+          $('clients').textContent = String(state.overlays);
+          $('served').textContent = String(health.cutscenesServed);
+          $('uptime').textContent = uptime(Number(health.uptimeSec) || 0);
+          if (!health.rolling && state.scene && Date.now() > state.sceneEnds) setScene(null);
+          if (wasOffline && !state.sending) feedback(state.scene ? 'Scene on air' : 'Ready', 'ok');
+        } catch {
+          state.online = false;
+          feedback('Server unreachable. Retrying…', 'error');
+        }
+        renderStatus();
+        tick();
       }
+
       $('trigger-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         if ($('trigger').disabled) return;
-        sending = true; updateButton();
+        state.sending = true; tick();
+        const style = selectedStyle();
         try {
-          const response = await fetch('/api/trigger', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ style: $('style').value, user: 'operator' }), signal: AbortSignal.timeout(5000) });
+          const response = await fetch('/api/trigger', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ style, user: 'operator' }), signal: AbortSignal.timeout(5000) });
           const result = await response.json();
           if (response.status === 202) {
-            readyAt = Date.now() + result.cooldownMs;
-            $('feedback').textContent = 'Cutscene called. The director is writing — watch the overlay.';
+            state.cooldownTotal = result.cooldownMs; state.readyAt = Date.now() + result.cooldownMs;
+            feedback(state.scene ? `${title(style)} queued behind the current scene` : `Generating ${title(style)} scene…`, 'busy');
           } else if (response.status === 429) {
-            readyAt = Date.now() + result.retryAfterMs;
-            $('feedback').textContent = result.reason === 'queue-full' ? 'Two scenes are waiting. Let the current take finish.' : 'The next take is cooling down. Stand by.';
+            state.cooldownTotal = result.retryAfterMs; state.readyAt = Date.now() + result.retryAfterMs;
+            feedback(result.reason === 'queue-full' ? 'Queue full: 2 scenes waiting' : 'Cooldown active', 'busy');
           } else { throw new Error(); }
-        } catch { $('feedback').textContent = 'Could not confirm the trigger. Check the overlay before trying again.'; }
-        finally { sending = false; updateButton(); }
+        } catch { feedback('Trigger failed. Check the server log.', 'error'); }
+        finally { state.sending = false; tick(); }
       });
-      setInterval(updateButton, 200);
+
+      // 1–5 select a preset, Enter triggers. Ignored with modifiers, in text fields, and on focused buttons/links.
+      document.addEventListener('keydown', (event) => {
+        if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
+        const target = event.target;
+        if (target.isContentEditable || ['TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(target.tagName) || (target.tagName === 'INPUT' && target.type !== 'radio')) return;
+        const index = Number(event.key) - 1;
+        if (Number.isInteger(index) && index >= 0 && index < radios().length) {
+          event.preventDefault();
+          radios()[index].checked = true;
+          if (target.type === 'radio') radios()[index].focus();
+        } else if (event.key === 'Enter') {
+          event.preventDefault();
+          $('trigger-form').requestSubmit();
+        }
+      });
+
+      // The preview renders at true 1920×1080 and is scaled, so type matches what OBS composites.
+      const fit = () => { $('preview').style.transform = `scale(${$('screen').clientWidth / 1920})`; };
+      new ResizeObserver(fit).observe($('screen'));
+      fit();
+
+      if (reducedMotion) setInterval(tick, 250);
+      else { const loop = () => { tick(); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
       setInterval(poll, 3000);
       void poll();
+      connect();
     })();
   </script>
 </body>

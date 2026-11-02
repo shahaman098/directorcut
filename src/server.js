@@ -5,9 +5,11 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { checkCooldown } from './chat.js';
-import { isStyle } from './styles.js';
+import { isStyle, STYLES } from './styles.js';
 
 const publicDir = path.resolve(fileURLToPath(new URL('../public/', import.meta.url)));
+const ROLES = new Set(['overlay', 'preview', 'control']);
+const STYLE_LIST = Object.entries(STYLES).map(([key, { label, badge, sting, description }]) => ({ key, label, badge, sting, description }));
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
 /** One active generation/playback, at most two waiting requests. */
@@ -91,7 +93,10 @@ export function createServer({ config, onTrigger, WebSocketServerImpl = WebSocke
     try {
       const url = new URL(request.url, 'http://localhost');
       if (request.method === 'GET' && url.pathname === '/healthz') {
-        json(response, 200, { ok: true, channel: config.channel, model: config.llm.model, uptimeSec: Math.floor((Date.now() - started) / 1000), cutscenesServed, wsClients: wss.clients.size });
+        const roles = { overlay: 0, preview: 0, control: 0 };
+        for (const client of wss.clients) roles[client.role] += 1;
+        // wsClients counts real overlays only; console previews and monitors are reported separately.
+        json(response, 200, { ok: true, channel: config.channel, model: config.llm.model, uptimeSec: Math.floor((Date.now() - started) / 1000), cutscenesServed, wsClients: roles.overlay, previewClients: roles.preview, rolling: Boolean(currentScene) });
         return;
       }
       if (request.method === 'POST' && url.pathname === '/api/trigger') {
@@ -107,12 +112,7 @@ export function createServer({ config, onTrigger, WebSocketServerImpl = WebSocke
         return;
       }
       if (request.method !== 'GET' && request.method !== 'HEAD') { json(response, 405, { error: 'Method not allowed.' }); return; }
-      if (url.pathname === '/') {
-        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        response.end(request.method === 'HEAD' ? undefined : `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DirectorCut</title><body style="background:#0b0c0e;color:#eee;font:18px system-ui;padding:10vw"><small style="color:#e6ba6a;letter-spacing:.3em">CHAT INTO CINEMA</small><h1 style="font:italic 72px Georgia;margin:24px 0">DirectorCut<span style="color:#e6ba6a">.</span></h1><p>Live dramatic replays. Executive produced by chat.</p><p>Status: <strong>ON AIR</strong></p><p><a style="color:#e6ba6a" href="/overlay">Open overlay</a> · <a style="color:#e6ba6a" href="/control">Operator console</a> · <a style="color:#e6ba6a" href="/healthz">Health</a></p></body></html>`);
-        return;
-      }
-      const name = url.pathname === '/overlay' ? 'overlay.html' : url.pathname === '/control' ? 'control.html' : decodeURIComponent(url.pathname).replace(/^\//, '');
+      const name = url.pathname === '/' ? 'index.html' : url.pathname === '/overlay' ? 'overlay.html' : url.pathname === '/control' ? 'control.html' : decodeURIComponent(url.pathname).replace(/^\//, '');
       const target = path.resolve(publicDir, name);
       if (!target.startsWith(`${publicDir}${path.sep}`) || !MIME[path.extname(target)]) { json(response, 404, { error: 'Not found.' }); return; }
       const content = await readFile(target);
@@ -131,24 +131,29 @@ export function createServer({ config, onTrigger, WebSocketServerImpl = WebSocke
   // get the live scene replayed with its remaining duration instead of a blank slate.
   let currentScene = null;
   let sceneStartedAt = 0;
-  wss.on('connection', (socket) => {
+  wss.on('connection', (socket, request) => {
     socket.on('error', () => {});
-    socket.send(JSON.stringify({ type: 'hello', config: { channel: config.channel } }));
+    const role = new URL(request?.url || '/overlay', 'http://localhost').searchParams.get('role');
+    socket.role = ROLES.has(role) ? role : 'overlay';
+    socket.send(JSON.stringify({ type: 'hello', config: { channel: config.channel, model: config.llm.model }, styles: STYLE_LIST }));
     if (currentScene) {
-      const remaining = Math.max(2500, (currentScene.scene.durationMs || 8000) - (Date.now() - sceneStartedAt));
-      socket.send(JSON.stringify({ type: 'cutscene', scene: { ...currentScene.scene, durationMs: remaining }, id: currentScene.id, take: currentScene.take }));
+      const elapsedMs = Date.now() - sceneStartedAt;
+      const remaining = Math.max(2500, (currentScene.scene.durationMs || 8000) - elapsedMs);
+      socket.send(JSON.stringify({ type: 'cutscene', scene: { ...currentScene.scene, durationMs: remaining, elapsedMs }, id: currentScene.id, take: currentScene.take, late: true }));
     }
   });
   return {
     broadcast(payload) {
       if (payload.type === 'cutscene') { currentScene = payload; sceneStartedAt = Date.now(); }
-      if (payload.type === 'idle' || payload.type === 'dropped') currentScene = null;
+      // A dropped request never interrupts the active scene, so only idle clears it.
+      if (payload.type === 'idle') currentScene = null;
       const data = JSON.stringify(payload);
       for (const client of wss.clients) {
         if (client.readyState === WebSocket.OPEN && client.bufferedAmount < 1024 * 1024) client.send(data);
       }
     },
     onServed() { cutscenesServed += 1; },
+    address: () => server.address(),
     listen: () => new Promise((resolve, reject) => {
       server.once('error', reject);
       server.listen(config.port, '127.0.0.1', () => { server.removeListener('error', reject); resolve(); });
