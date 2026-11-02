@@ -79,7 +79,7 @@
     const node = (value) => { nodes.push(value); return value; };
     const master = node(ctx.createGain());
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(.17, now + .13);
+    master.gain.exponentialRampToValueAtTime(.28, now + .13);
     master.gain.setValueAtTime(.17, now + 1.25);
     master.gain.exponentialRampToValueAtTime(.0001, now + length);
     master.connect(ctx.destination);
@@ -213,7 +213,7 @@
         if (reducedMotion) { $('caption').textContent = characters.join(''); $('caption').classList.add('complete'); }
         else type(1);
       }, 600);
-      const duration = Math.min(12000, Math.max(5000, Number(scene.durationMs) || 8000));
+      const duration = Math.min(12000, Math.max(2500, Number(scene.durationMs) || 8000));
       schedule(() => root.classList.add('exiting'), duration - 800);
       schedule(hideScene, duration);
     }); });

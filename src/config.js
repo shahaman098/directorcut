@@ -32,6 +32,6 @@ export const config = {
     baseUrl,
     apiKey: (process.env.LLM_API_KEY || '').trim(),
     model: process.env.LLM_MODEL || 'gpt-4o-mini',
-    timeoutMs: integer('LLM_TIMEOUT_MS', 8000, 1, 120000),
+    timeoutMs: integer('LLM_TIMEOUT_MS', 4000, 1, 120000),
   },
 };

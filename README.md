@@ -76,7 +76,7 @@ All secrets stay in `.env`, which is ignored by Git. `.env.example` contains the
 | `LLM_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible API root |
 | `LLM_API_KEY` | Empty | Empty means no Authorization header, for local providers |
 | `LLM_MODEL` | `gpt-4o-mini` | Provider model identifier |
-| `LLM_TIMEOUT_MS` | `8000` | Total request budget, including the optional format retry |
+| `LLM_TIMEOUT_MS` | `4000` | Total request budget, including the optional format retry |
 | `PORT` | `3000` | Local HTTP and WS port |
 | `TRIGGER_COMMAND` | `!cutscene` | Case-insensitive chat command |
 | `COOLDOWN_SECONDS` | `20` | Shared production cooldown |
