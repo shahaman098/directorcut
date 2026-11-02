@@ -6,6 +6,17 @@ export const pruneHypeWindow = (entries, now) => entries.filter(({ ts }) => ts >
 export const countHypeTokens = (message) => (String(message).toUpperCase().match(/[A-Z0-9_]+/g) || [])
   .reduce((sum, word) => sum + Number(HYPE.has(word)), 0);
 
+export function isAllowed(tags, role) {
+  if (role === 'everyone') return true;
+  if (!tags) return false;
+  const badges = tags.badges || {};
+  if (badges.broadcaster) return true;
+  if (role === 'mods') return Boolean(tags.mod);
+  if (role === 'vips') return Boolean(badges.vip || badges.mod || badges.moderator || tags.mod);
+  if (role === 'subs') return Boolean(tags.subscriber || badges.founder || badges.vip || badges.mod || badges.moderator || tags.mod);
+  return false;
+}
+
 export function shouldTriggerOnHype(windowCounts, threshold, lastAutoTs, now) {
   return threshold > 0 && (lastAutoTs == null || now - lastAutoTs >= 60000)
     && pruneHypeWindow(windowCounts, now).reduce((sum, entry) => sum + entry.count, 0) >= threshold;
@@ -17,9 +28,9 @@ export function parseCommand(message, command = '!cutscene') {
   return { style: isStyle(tokens[1]?.toLowerCase()) ? tokens[1].toLowerCase() : undefined };
 }
 
-export async function createChat({ config, onTrigger, onMessage = () => {}, log = console.log }) {
+export async function createChat({ config, onTrigger, onMessage = () => {}, log = console.log, Client }) {
   // Pure helpers and rehearsal never load Twitch's legacy networking dependencies.
-  const { default: tmi } = await import('tmi.js');
+  const TmiClient = Client || (await import('tmi.js')).default.Client;
   const authenticated = Boolean(config.twitch.token);
   const silent = () => {};
   const options = {
@@ -28,7 +39,7 @@ export async function createChat({ config, onTrigger, onMessage = () => {}, log 
     logger: { trace: silent, debug: silent, info: silent, warn: silent, error: silent, fatal: silent },
   };
   if (authenticated) options.identity = { username: config.twitch.username, password: config.twitch.token };
-  const client = new tmi.Client(options);
+  const client = new TmiClient(options);
   let counts = [];
   let lastAutoTs = null;
   let lastBusyReplyTs = null;
@@ -43,7 +54,7 @@ export async function createChat({ config, onTrigger, onMessage = () => {}, log 
   client.on('message', (_channel, tags, message, self) => {
     if (self) return;
     const now = Date.now();
-    const user = tags.username || 'viewer';
+    const user = tags?.username || 'viewer';
     onMessage(`${user}: ${message}`);
     const quiet = message.trim().toLowerCase() === '!quiet-modes';
     if (quiet) quietUntil = now + Math.max(1, config.cooldownSeconds) * 1000;
@@ -51,14 +62,14 @@ export async function createChat({ config, onTrigger, onMessage = () => {}, log 
     const count = countHypeTokens(message);
     if (count) counts.push({ ts: now, count });
     const command = parseCommand(message, config.triggerCommand);
-    if (command) {
+    if (command && isAllowed(tags, config.triggerRole || 'everyone')) {
       const result = onTrigger({ user, message, style: command.style, source: 'chat' });
       if (result.accepted) {
         void say(`🎬 CUTSCENE INITIATED for @${user} by ${config.llm.model} — rolling…`);
       } else if (result.reason === 'busy' && now >= quietUntil
         && checkCooldown(lastBusyReplyTs, now, Math.max(1, config.cooldownSeconds))) {
         lastBusyReplyTs = now;
-        void say(`🎬 cutscene already rolling — queue is full, @${user}`);
+        void say(`🎬 a cutscene is already rolling, @${user} — try again shortly`);
       }
     }
     if (shouldTriggerOnHype(counts, config.hypeThreshold, lastAutoTs, now)) {

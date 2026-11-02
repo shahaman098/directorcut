@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { loadBlocklist } from './safety.js';
 
 function integer(name, fallback, min, max) {
   const raw = process.env[name];
@@ -25,6 +26,9 @@ export const config = {
   channel,
   port: integer('PORT', 3000, 1, 65535),
   triggerCommand: command,
+  triggerRole: ['everyone', 'subs', 'vips', 'mods'].includes(process.env.TRIGGER_ROLE) ? process.env.TRIGGER_ROLE : 'everyone',
+  moderation: ['auto', 'off'].includes(process.env.MODERATION) ? process.env.MODERATION : 'auto',
+  blocklist: loadBlocklist(process.env),
   cooldownSeconds: integer('COOLDOWN_SECONDS', 20, 0, 3600),
   hypeThreshold: integer('HYPE_THRESHOLD', 0, 0, 100000),
   twitch: { username, token: token ? (token.startsWith('oauth:') ? token : `oauth:${token}`) : '' },

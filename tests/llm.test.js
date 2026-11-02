@@ -33,3 +33,14 @@ test('timeout aborts and throws so the caller can fall back', async () => {
     signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
   }) }), /timed out/);
 });
+test('the shared director signal cancels an in-flight completion', async () => {
+  const controller = new AbortController();
+  let signal;
+  const completion = chatCompletion(llm, [], { signal: controller.signal, fetchImpl: (_url, options) => new Promise((_resolve, reject) => {
+    signal = options.signal;
+    signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+  }) });
+  controller.abort();
+  await assert.rejects(completion, /timed out/);
+  assert.equal(signal.aborted, true);
+});

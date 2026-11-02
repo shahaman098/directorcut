@@ -4,12 +4,13 @@
   const root = $('scene');
   const debug = new URLSearchParams(location.search).get('debug') === '1';
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const grainTiles = createGrainTiles();
   const labels = { noir: 'A case for the clip archives', anime: 'The awakening of chat', hollywood: 'Every moment has a movie', baywatch: 'Heroes move at half speed', sportscast: 'The play. The legend. The replay.' };
   let socket;
   let retry = 0;
   let reconnectTimer;
   let timers = [];
-  let grainFrame;
+  let grainTimer;
   let entranceFrame;
   let sceneVersion = 0;
   let sceneNumber = 0;
@@ -29,7 +30,7 @@
     sceneVersion += 1;
     timers.forEach(clearTimeout);
     timers = [];
-    cancelAnimationFrame(grainFrame);
+    clearInterval(grainTimer);
     cancelAnimationFrame(entranceFrame);
     audioCleanup();
     root.hidden = true;
@@ -38,25 +39,30 @@
     $('audio-unlock').hidden = true;
   }
 
-  function animateGrain() {
-    const canvas = $('grain');
-    const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx || reducedMotion) return;
-    const frame = ctx.createImageData(canvas.width, canvas.height);
-    let previous = 0;
-    const draw = (now) => {
-      if (root.hidden) return;
-      if (now - previous > 80) {
+  function createGrainTiles() {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256; canvas.height = 256;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) return [];
+      const frame = ctx.createImageData(256, 256);
+      return Array.from({ length: 4 }, () => {
         for (let i = 0; i < frame.data.length; i += 4) {
           const v = Math.random() * 255;
           frame.data[i] = v; frame.data[i + 1] = v; frame.data[i + 2] = v; frame.data[i + 3] = 255;
         }
         ctx.putImageData(frame, 0, 0);
-        previous = now;
-      }
-      grainFrame = requestAnimationFrame(draw);
-    };
-    grainFrame = requestAnimationFrame(draw);
+        return `url("${canvas.toDataURL('image/png')}")`;
+      });
+    } catch { return []; }
+  }
+
+  function animateGrain() {
+    if (!grainTiles.length || reducedMotion) return;
+    let tile = 0;
+    const draw = () => { if (!root.hidden) $('grain').style.backgroundImage = grainTiles[tile++ % grainTiles.length]; };
+    draw();
+    grainTimer = setInterval(draw, 80);
   }
 
   function getAudio() {
@@ -177,11 +183,11 @@
     } catch { /* The button remains available if the browser blocks audio. */ }
   });
 
-  function renderScene(scene, id) {
+  function renderScene(scene, id, take) {
     if (!scene || !Object.hasOwn(labels, scene.style) || typeof scene.caption !== 'string') return;
     hideScene();
     lastId = String(id || 'unknown').slice(0, 8);
-    sceneNumber += 1;
+    sceneNumber = Number.isInteger(take) && take > 0 ? take : sceneNumber + 1;
     root.className = scene.style;
     $('badge').textContent = scene.badge;
     $('style-label').textContent = `${scene.style.toUpperCase()} / DIR. AI`;
@@ -192,6 +198,7 @@
     $('sub-caption').textContent = scene.subCaption;
     $('credit').textContent = scene.credit;
     $('take').textContent = `TAKE ${String(sceneNumber).padStart(3, '0')} / LIVE`;
+    $('score-take').textContent = String(sceneNumber).padStart(2, '0');
     $('audio-unlock').classList.remove('fading');
     updateDebug();
     root.hidden = false;
@@ -227,7 +234,7 @@
       try {
         const payload = JSON.parse(event.data);
         if (payload.type === 'hello') $('channel').textContent = `#${payload.config.channel.toUpperCase()}`;
-        if (payload.type === 'cutscene') renderScene(payload.scene, payload.id);
+        if (payload.type === 'cutscene') renderScene(payload.scene, payload.id, payload.take);
         if (payload.type === 'idle') hideScene();
       } catch { /* Ignore malformed frames; reconnect remains available. */ }
     });

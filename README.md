@@ -81,10 +81,17 @@ All secrets stay in `.env`, which is ignored by Git. `.env.example` contains the
 | `TRIGGER_COMMAND` | `!cutscene` | Case-insensitive chat command |
 | `COOLDOWN_SECONDS` | `20` | Shared production cooldown |
 | `HYPE_THRESHOLD` | `0` | Hype-token count to auto-trigger; zero disables |
+| `MODERATION` | `auto` | `auto` checks OpenAI captions against the moderation API (fail closed); `off` skips it — the blocklist always applies |
+| `TRIGGER_ROLE` | `everyone` | Minimum chat rank for `!cutscene`: `everyone`, `subs`, `vips`, or `mods` |
+| `BLOCKLIST_FILE` | Empty | Optional UTF-8 file, one blocked term per line, merged with the built-in list |
 
 For Ollama, set `LLM_BASE_URL=http://localhost:11434/v1`, choose an installed model with `LLM_MODEL`, and leave `LLM_API_KEY` empty. The client sends OpenAI-compatible chat completions with JSON output requested; providers that reject `response_format` are retried once without it. Missing local models or an unreachable endpoint use fallback scripts.
 
 Hype counts whole-word occurrences of `LUL POG POGGERS KEKW W CLIP LETSGO EZ`, case insensitively, in a rolling 30-second window. The exact 30-second expiry is excluded. At the threshold, an idle and cooled-down director starts `sportscast`, credits **EXECUTIVE PRODUCER: CHAT ITSELF**, and debounces further automatic scenes for 60 seconds.
+
+## Safety and moderation
+
+Model output never reaches the overlay unfiltered. Every caption and sub-caption passes a whole-word blocklist (built-in list plus optional `BLOCKLIST_FILE`); when the provider is OpenAI with an API key, they are additionally checked against the moderation endpoint — any flag, error, or timeout fails closed to the deterministic fallback script. Chat-triggered scenes can be rank-gated with `TRIGGER_ROLE`; non-allowed viewers receive silence, never a public rebuff. Chat lines and trigger messages are stripped of URLs and `@mentions` before they reach the model.
 
 ## Operator and integration routes
 
