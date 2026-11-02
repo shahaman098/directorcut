@@ -1,0 +1,19 @@
+{
+  "name": "directorcut",
+  "version": "1.0.0",
+  "description": "Chat-triggered instant cinema for Twitch streams.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/index.js",
+    "simulate": "node src/index.js --simulate",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "tmi.js": "^1.8.5",
+    "ws": "^8.18.0"
+  }
+}
