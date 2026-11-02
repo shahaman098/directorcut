@@ -433,13 +433,15 @@
         state.sending = true; tick();
         const style = selectedStyle();
         const pitch = $('pitch-input').value.trim();
+        // Captured before the request: this scene's own WS frame can arrive before the 202 does.
+        const queued = Boolean(state.scene);
         try {
           const response = await fetch('/api/trigger', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ style, user: 'operator', ...(pitch ? { pitch } : {}) }), signal: AbortSignal.timeout(5000) });
           const result = await response.json();
           if (response.status === 202) {
             $('pitch-input').value = '';
             state.cooldownTotal = result.cooldownMs; state.readyAt = Date.now() + result.cooldownMs;
-            feedback(state.scene ? `${title(style)} queued behind the current scene` : `Generating ${title(style)} scene…`, 'busy');
+            if (!state.scene || queued) feedback(queued ? `${title(style)} queued behind the current scene` : `Generating ${title(style)} scene…`, 'busy');
           } else if (response.status === 429) {
             state.cooldownTotal = result.retryAfterMs; state.readyAt = Date.now() + result.retryAfterMs;
             feedback(result.reason === 'queue-full' ? 'Queue full: 2 scenes waiting' : 'Cooldown active', 'busy');
