@@ -83,7 +83,7 @@ async function readJSON(request) {
   catch { throw Object.assign(new Error('Expected a JSON body.'), { status: 400 }); }
 }
 
-export function createServer({ config, onTrigger, WebSocketServerImpl = WebSocketServer }) {
+export function createServer({ config, onTrigger, obs = null, WebSocketServerImpl = WebSocketServer }) {
   const started = Date.now();
   let cutscenesServed = 0;
   const json = (response, status, value, headers = {}) => {
@@ -97,7 +97,7 @@ export function createServer({ config, onTrigger, WebSocketServerImpl = WebSocke
         const roles = { overlay: 0, preview: 0, control: 0 };
         for (const client of wss.clients) roles[client.role] += 1;
         // wsClients counts real overlays only; console previews and monitors are reported separately.
-        json(response, 200, { ok: true, channel: config.channel, model: config.llm.model, uptimeSec: Math.floor((Date.now() - started) / 1000), cutscenesServed, wsClients: roles.overlay, previewClients: roles.preview, rolling: Boolean(currentScene) });
+        json(response, 200, { ok: true, channel: config.channel, model: config.llm.model, uptimeSec: Math.floor((Date.now() - started) / 1000), cutscenesServed, wsClients: roles.overlay, previewClients: roles.preview, rolling: Boolean(currentScene), obs: obs?.configured ? 'configured' : 'off' });
         return;
       }
       if (request.method === 'POST' && url.pathname === '/api/trigger') {
@@ -117,6 +117,19 @@ export function createServer({ config, onTrigger, WebSocketServerImpl = WebSocke
         const pitch = body.pitch?.trim() || undefined;
         const result = onTrigger({ style: body.style, user: body.user || 'operator', pitch, message: pitch || 'Operator requested a test cutscene.', source: 'manual' });
         json(response, result.accepted ? 202 : 429, result, result.accepted ? {} : { 'Retry-After': String(Math.max(1, Math.ceil(result.retryAfterMs / 1000))) });
+        return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/replay') {
+        // Saves the OBS replay buffer (the streamer keeps the clip) and cuts a slow-mo scene.
+        if (!/^application\/json\b/i.test(request.headers['content-type'] || '')) {
+          json(response, 415, { error: 'Send Content-Type: application/json.' });
+          return;
+        }
+        if (!obs?.configured) { json(response, 503, { error: 'OBS is not configured (set OBS_URL).' }); return; }
+        const saved = await obs.saveReplay();
+        if (!saved) { json(response, 503, { error: 'OBS replay buffer unavailable.' }); return; }
+        const result = onTrigger({ user: 'replay-director', style: 'baywatch', message: 'Replay buffer saved — cut the slow-mo.', source: 'manual' });
+        json(response, result.accepted ? 202 : 429, { ...result, saved: true }, result.accepted ? {} : { 'Retry-After': String(Math.max(1, Math.ceil(result.retryAfterMs / 1000))) });
         return;
       }
       if (request.method !== 'GET' && request.method !== 'HEAD') { json(response, 405, { error: 'Method not allowed.' }); return; }

@@ -4,6 +4,8 @@ import { createChat } from './chat.js';
 import { createServer, createSceneQueue } from './server.js';
 import { startSimulation } from './simulate.js';
 import { sanitizeTrigger } from './safety.js';
+import { createObs } from './obs.js';
+import { createEventSub, resolveBroadcasterId } from './eventsub.js';
 
 const flags = new Set(process.argv.slice(2));
 if ([...flags].some((flag) => !['--simulate', '--once'].includes(flag)) || (flags.has('--once') && !flags.has('--simulate'))) {
@@ -18,13 +20,15 @@ if ([...flags].some((flag) => !['--simulate', '--once'].includes(flag)) || (flag
   } else {
     const history = [];
     const onMessage = (text) => { history.push(text.slice(0, 500)); if (history.length > 20) history.shift(); };
-    const direct = createDirector({ llm: config.llm, channel: config.channel, moderation: config.moderation, blocklist: config.blocklist, onFallback: () => console.log('  director ▸ local screenplay · fallback ready') });
+    const obs = createObs({ url: config.obs.url, password: config.obs.password, sourceName: config.obs.sourceName, timeoutMs: config.obs.timeoutMs });
+    const direct = createDirector({ llm: config.llm, channel: config.channel, moderation: config.moderation, blocklist: config.blocklist, obs, vision: config.vision, onFallback: () => console.log('  director ▸ local screenplay · fallback ready') });
     let queue;
     // Pitches are cleaned once at intake so the director, the console and the logs all see the same safe text.
     const onTrigger = (trigger) => queue.trigger(sanitizeTrigger(trigger, config.blocklist));
-    const server = createServer({ config, onTrigger });
+    const server = createServer({ config, onTrigger, obs });
     queue = createSceneQueue({ direct, broadcast: server.broadcast, cooldownSeconds: config.cooldownSeconds, recentChat: () => history.slice(), onServed: server.onServed });
     let chat;
+    let eventSub;
     let stopSimulation;
     let stopping = false;
     const shutdown = async () => {
@@ -32,6 +36,7 @@ if ([...flags].some((flag) => !['--simulate', '--once'].includes(flag)) || (flag
       stopping = true;
       stopSimulation?.();
       queue.stop();
+      eventSub?.close();
       await Promise.all([chat?.disconnect(), server.close()]);
     };
     process.once('SIGINT', () => { void shutdown(); });
@@ -46,6 +51,16 @@ if ([...flags].some((flag) => !['--simulate', '--once'].includes(flag)) || (flag
         chat = await createChat({ config, onTrigger, onMessage });
         try { await chat.connect(); }
         catch { console.error('  chat ▸ connection unavailable; operator console remains live'); }
+        if (config.obs.url && config.vision === 'on') console.log('  director ▸ vision enabled · the director watches the program feed');
+        if (config.twitch.clientId && config.twitch.userToken) {
+          const broadcasterId = await resolveBroadcasterId(config.twitch);
+          if (broadcasterId) {
+            eventSub = createEventSub({ twitch: config.twitch, broadcasterId, rewardTitles: config.rewardTitles, onTrigger });
+            eventSub.connect();
+          } else {
+            console.error('  eventsub ▸ disabled · could not resolve broadcaster id');
+          }
+        }
       }
     } catch {
       console.error(`  server ▸ could not start on port ${config.port}`);

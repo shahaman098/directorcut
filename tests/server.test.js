@@ -122,3 +122,30 @@ test('a viewer pitch rides with the broadcast for the console', async (t) => {
   await queue.whenIdle();
   assert.equal(payloads.find(({ type }) => type === 'cutscene').pitch, 'swam the lake for a duck');
 });
+test('the replay route saves the OBS buffer and cuts a slow-mo scene', async (t) => {
+  const triggers = [];
+  let saved = true;
+  const obs = { configured: true, saveReplay: async () => saved };
+  const config = { channel: 'replay_test', port: 0, llm: { model: 'test-model' } };
+  const server = createServer({ config, onTrigger: (trigger) => { triggers.push(trigger); return { accepted: true, cooldownMs: 0 }; }, obs });
+  await server.listen();
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const health = await (await fetch(`${base}/healthz`)).json();
+  assert.equal(health.obs, 'configured');
+  const first = await fetch(`${base}/api/replay`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+  assert.deepEqual([first.status, (await first.json()).saved], [202, true]);
+  assert.deepEqual([triggers[0].style, triggers[0].source, triggers[0].user], ['baywatch', 'manual', 'replay-director']);
+  saved = false;
+  assert.equal((await fetch(`${base}/api/replay`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })).status, 503);
+});
+
+test('the replay route without OBS reports the missing configuration', async (t) => {
+  const config = { channel: 'replay_test', port: 0, llm: { model: 'test-model' } };
+  const server = createServer({ config, onTrigger: () => ({ accepted: true }) });
+  await server.listen();
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  assert.equal((await (await fetch(`${base}/healthz`)).json()).obs, 'off');
+  assert.equal((await fetch(`${base}/api/replay`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })).status, 503);
+});

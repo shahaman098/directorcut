@@ -144,3 +144,24 @@ test('a blocklisted pitch is dropped together with the message that carried it',
 test('no pitch means no viewerPitch field', () => {
   assert.equal('viewerPitch' in JSON.parse(buildPrompt('test', trigger)[1].content), false);
 });
+test('the vision director reacts to the captured frame when enabled', async () => {
+  const frame = { imageData: 'data:image/jpeg;base64,ZnJhbWU=', sourceName: 'Game Scene' };
+  let seen;
+  const obs = { captureFrame: async () => frame };
+  const director = createDirector({ llm: {}, channel: 'test', vision: 'on', obs, complete: (_llm, messages) => { seen = messages; return JSON.stringify(valid); } });
+  assert.deepEqual(await director(trigger), valid);
+  assert.equal(seen.length, 3);
+  assert.deepEqual(seen[seen.length - 1].content[1].image_url, { url: frame.imageData, detail: 'low' });
+});
+test('a missing frame or disabled vision degrades to the text-only director', async () => {
+  let captures = 0;
+  let seen;
+  const obs = { captureFrame: async () => { captures += 1; return null; } };
+  const director = createDirector({ llm: {}, channel: 'test', vision: 'on', obs, complete: (_llm, messages) => { seen = messages; return JSON.stringify(valid); } });
+  assert.deepEqual(await director(trigger), valid);
+  assert.deepEqual([captures, seen.length], [1, 2]);
+  let capturesOff = 0;
+  const directorOff = createDirector({ llm: {}, channel: 'test', vision: 'off', obs: { captureFrame: async () => { capturesOff += 1; return null; } }, complete: () => JSON.stringify(valid) });
+  assert.deepEqual(await directorOff(trigger), valid);
+  assert.equal(capturesOff, 0);
+});

@@ -21,6 +21,11 @@ const username = (process.env.TWITCH_BOT_USERNAME || '').trim().toLowerCase();
 if (token && !/^[a-z0-9_]{1,25}$/.test(username)) throw new Error('Set TWITCH_BOT_USERNAME when using TWITCH_OAUTH_TOKEN.');
 const command = (process.env.TRIGGER_COMMAND || '!cutscene').trim().toLowerCase();
 if (!/^!\S+$/.test(command)) throw new Error('TRIGGER_COMMAND must be one word starting with !.');
+// Optional OBS WebSocket: a malformed URL silently disables the vision director and
+// replay trigger (they are enhancements); startup logs make the disabled state visible.
+const obsUrlRaw = (process.env.OBS_URL || '').trim();
+const vision = (process.env.DIRECTOR_VISION || 'off').trim().toLowerCase();
+if (!['on', 'off'].includes(vision)) throw new Error('DIRECTOR_VISION must be on or off.');
 
 export const config = {
   channel,
@@ -31,7 +36,21 @@ export const config = {
   blocklist: loadBlocklist(process.env),
   cooldownSeconds: integer('COOLDOWN_SECONDS', 20, 0, 3600),
   hypeThreshold: integer('HYPE_THRESHOLD', 0, 0, 100000),
-  twitch: { username, token: token ? (token.startsWith('oauth:') ? token : `oauth:${token}`) : '' },
+  vision,
+  obs: {
+    url: /^wss?:\/\//.test(obsUrlRaw) ? obsUrlRaw : '',
+    password: process.env.OBS_PASSWORD || '',
+    sourceName: (process.env.OBS_SOURCE_NAME || '').trim(),
+    timeoutMs: integer('OBS_TIMEOUT_MS', 1500, 200, 10000),
+  },
+  twitch: {
+    username,
+    token: token ? (token.startsWith('oauth:') ? token : `oauth:${token}`) : '',
+    clientId: (process.env.TWITCH_CLIENT_ID || '').trim(),
+    userToken: (process.env.TWITCH_USER_TOKEN || '').trim(),
+    broadcasterId: (process.env.TWITCH_BROADCASTER_ID || '').trim(),
+  },
+  rewardTitles: (process.env.REWARD_TITLES || '').split(',').map((title) => title.trim().toLowerCase()).filter(Boolean),
   llm: {
     baseUrl,
     apiKey: (process.env.LLM_API_KEY || '').trim(),

@@ -73,7 +73,18 @@ export function buildPrompt(channel, trigger, recentChat = []) {
   ];
 }
 
-export function createDirector({ llm, channel, complete = chatCompletion, onFallback = () => {}, moderation = 'auto', blocklist = loadBlocklist(), fetchImpl = globalThis.fetch, log = console.log }) {
+/** Appends the captured program frame so the director reacts to what is actually on screen. */
+export function buildVisionMessages(messages, frame) {
+  return [...messages, {
+    role: 'user',
+    content: [
+      { type: 'text', text: 'This is the streamer\'s live frame at the moment of the trigger. React to what is actually visible.' },
+      { type: 'image_url', image_url: { url: frame.imageData, detail: 'low' } },
+    ],
+  }];
+}
+
+export function createDirector({ llm, channel, complete = chatCompletion, onFallback = () => {}, moderation = 'auto', blocklist = loadBlocklist(), fetchImpl = globalThis.fetch, obs = null, vision = 'off', log = console.log }) {
   const counters = new Map();
   return async (rawTrigger, recentChat = []) => {
     const trigger = sanitizeTrigger(rawTrigger, blocklist);
@@ -88,7 +99,13 @@ export function createDirector({ llm, channel, complete = chatCompletion, onFall
       controller.signal.addEventListener('abort', onAbort, { once: true });
     });
     try {
-      const text = await Promise.race([complete(llm, buildPrompt(channel, trigger, recentChat), { signal: controller.signal }), expired]);
+      let messages = buildPrompt(channel, trigger, recentChat);
+      if (vision === 'on' && obs) {
+        const frame = await obs.captureFrame();
+        if (frame) messages = buildVisionMessages(messages, frame);
+        else log('  director ▸ obs frame unavailable · text-only');
+      }
+      const text = await Promise.race([complete(llm, messages, { signal: controller.signal }), expired]);
       const scene = validateScene(extractJSON(text), trigger);
       let flagged = blocklistHit(scene.caption, blocklist) || blocklistHit(scene.subCaption, blocklist);
       if (!flagged && moderation !== 'off') {
