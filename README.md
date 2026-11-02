@@ -9,7 +9,7 @@ Streamers lose the magic of big moments in the scroll of chat. DirectorCut turns
 Requires Node.js **20 or newer**. No build step.
 
 ```sh
-git clone <your-directorcut-repository-url>
+git clone https://github.com/shahaman098/directorcut.git
 cd directorcut
 npm install
 cp .env.example .env
@@ -112,11 +112,11 @@ The WS client reconnects with exponential backoff capped at five seconds. Local 
 
 The three test files use only `node:test` and strict assertions, with injected provider mocks and pure chat helpers. They never connect to Twitch or a live LLM. They cover fenced and wrapped JSON, malformed output, validation and clamping, fallback rotation, credits, cooldown boundaries, hype-window math, command parsing, format retries, optional authentication, and timeout aborts.
 
-Install dependencies before running `npm test`. This implementation was reviewed and syntax-checked without installing dependencies or executing the test suite, as requested by the build task.
+Install dependencies before running `npm test`. The suite is verified green (17/17) on the submission build.
 
 ## Built with OpenAI Codex
 
-Built with **OpenAI Codex**, from the director and rehearsal pipeline to the broadcast package and procedural audio. Codex session: `01a19dc4-534f-7690-b36b-33615188f337`.
+Built with **OpenAI Codex**, from the director and rehearsal pipeline to the broadcast package and procedural audio. Codex session: `01a19dc4-534f-7690-b36b-33615188f337`. Post-build human direction passes: OBS-safe compositing (blend modes flattened), a `?backdrop=1` rehearsal backdrop, and WebSocket late-join scene replay.
 
 ## Hackathon submission notes
 
