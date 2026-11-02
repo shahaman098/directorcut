@@ -1,8 +1,8 @@
 # DirectorCut
 
-**Chat-triggered instant cinema for Twitch.** A viewer types `!cutscene`, an AI director writes a miniature movie trailer, and a cinematic overlay takes over the stream — complete with letterbox bars, narration, producer credit, and a synthesized sting.
+**Chat-triggered instant cinema for Twitch.** A viewer types `!cutscene anime one HP clutch with a frying pan`, an AI director turns that moment into a miniature movie trailer, and a cinematic overlay takes over the stream — complete with letterbox bars, narration, producer credit, and a synthesized sting.
 
-Streamers lose the magic of big moments in the scroll of chat. DirectorCut turns that hype into instant cinema and gives viewers a part in the production. The person who calls the cutscene gets the executive producer credit, live on stream.
+Streamers lose the magic of big moments in the scroll of chat. DirectorCut turns that hype into instant cinema and gives viewers a real part in the production: they pitch what just happened, the AI writes the scene, and the person who called it gets the executive producer credit, live on stream.
 
 ## 60-second setup
 
@@ -23,7 +23,7 @@ npm start
 
 In OBS, add a **Browser Source** with URL `http://localhost:3000/overlay`, width **1920**, height **1080**. Keep the background transparent. Enable **Control audio via OBS** to mix the sting, and keep the source loaded while idle. The overlay occupies zero visible pixels between scenes. OBS Browser Sources normally allow autoplay; if your browser blocks WebAudio, interact with the source and click the **🔊 Click to enable sound** button during a scene. In a regular browser, that click may be required once per page load.
 
-Open `http://localhost:3000/control`, choose a treatment (or press `1`–`5`), and press **🎬 TRIGGER TEST CUTSCENE** (or `Enter`). The console has a muted, true-scale **Program** monitor with an on-air tally, the live scene's details and time remaining, a session history table, server metrics, and a warning when no OBS overlay is connected. Then try `!cutscene anime` in Twitch chat.
+Open `http://localhost:3000/control`, choose a treatment (or press `1`–`5`), and press **🎬 TRIGGER TEST CUTSCENE** (or `Enter`). The console has a muted, true-scale **Program** monitor with an on-air tally, the live scene's details and time remaining, a session history table, server metrics, and a warning when no OBS overlay is connected. Type a pitch in **What just happened?** to direct the scene yourself. Then try `!cutscene anime one HP clutch with a frying pan` in Twitch chat.
 
 ## Commands
 
@@ -33,10 +33,10 @@ Open `http://localhost:3000/control`, choose a treatment (or press `1`–`5`), a
 | `npm run simulate` | Rehearse all five styles without Twitch |
 | `node src/index.js --simulate --once` | Render one rehearsal scene, then exit |
 | `npm test` | Run the fast, network-free `node:test` suite |
-| `!cutscene [style]` | Request a scene in chat; command is case insensitive |
+| `!cutscene [style] [what happened]` | Request a scene in chat. The optional pitch (up to 100 characters) tells the AI director what the scene is about; the command is case insensitive |
 | `!quiet-modes` | Suppress busy replies for one cooldown window |
 
-Simulation uses fake messages from `clip_enjoyer` and friends, cycles approximately every 14 seconds, and waits for a slow generation/playback to finish before the next scenario. It uses the same director and queue as production, with cooldown set to zero for rehearsal. `--once` waits for generation and playback, then closes the process. A successful local response takes about eight seconds of playback; a timed-out provider can add up to `LLM_TIMEOUT_MS`.
+Simulation uses fake messages from `clip_enjoyer` and friends (most scenarios include a viewer pitch), cycles approximately every 14 seconds, and waits for a slow generation/playback to finish before the next scenario. It uses the same director and queue as production, with cooldown set to zero for rehearsal. `--once` waits for generation and playback, then closes the process. A successful local response takes about eight seconds of playback; a timed-out provider can add up to `LLM_TIMEOUT_MS`.
 
 ## How it works
 
@@ -51,6 +51,17 @@ Fake chat ────────┘    └─ deterministic fallback          
 One Node process hosts the pages, API, WebSocket server, Twitch connection, and scene queue. The LLM produces a small JSON script. The server validates and truncates captions, clamps playback to 5–12 seconds, and rebuilds every credit from the actual trigger. Chat is untrusted prompt context, and every visible model string is rendered as text.
 
 The production cooldown is shared by chat, hype, and operator requests. Chat commands received while generation or playback is active are declined; an authenticated bot posts a rate-limited busy reply unless quiet mode is active. The operator pipeline supports at most **two waiting scenes** behind one active scene; a third waiting request is dropped and broadcasts `dropped`. Accepted scenes broadcast `cutscene`, finish with `idle`, then advance the queue. Connect an overlay before triggering to see the full sequence; a newly connected overlay waits for the next scene.
+
+## Viewer pitches
+
+Everything after `!cutscene` and the optional style is the viewer's pitch: `!cutscene noir he missed all six shots and blamed the wind`. The director builds the caption around that moment, so chat recognises its own story on screen. The pitch is story material, never on-screen text:
+
+- Links, `@mentions` and control characters are stripped, and the pitch is capped at 100 characters.
+- A pitch containing a blocklisted term is dropped together with the message that carried it; the scene still plays, unpitched.
+- The model is told to treat the pitch as untrusted story material, never instructions, and every caption it writes still passes the blocklist and moderation.
+- The pitch itself is never rendered on the overlay. Only the operator console shows it, beside the scene it produced.
+
+Without a configured provider, fallback scripts ignore the pitch, so the pitch needs a working LLM.
 
 ## Style presets
 
@@ -91,11 +102,11 @@ Hype counts whole-word occurrences of `LUL POG POGGERS KEKW W CLIP LETSGO EZ`, c
 
 ## Safety and moderation
 
-Model output never reaches the overlay unfiltered. Every caption and sub-caption passes a whole-word blocklist (built-in list plus optional `BLOCKLIST_FILE`); when the provider is OpenAI with an API key, they are additionally checked against the moderation endpoint — any flag, error, or timeout fails closed to the deterministic fallback script. Chat-triggered scenes can be rank-gated with `TRIGGER_ROLE`; non-allowed viewers receive silence, never a public rebuff. Chat lines and trigger messages are stripped of URLs and `@mentions` before they reach the model.
+Model output never reaches the overlay unfiltered. Every caption and sub-caption passes a whole-word blocklist (built-in list plus optional `BLOCKLIST_FILE`); when the provider is OpenAI with an API key, they are additionally checked against the moderation endpoint — any flag, error, or timeout fails closed to the deterministic fallback script. Chat-triggered scenes can be rank-gated with `TRIGGER_ROLE`; non-allowed viewers receive silence, never a public rebuff. Chat lines, trigger messages, and viewer pitches are stripped of URLs and `@mentions` before they reach the model; blocklisted pitches are discarded before the prompt is built.
 
 ## Operator and integration routes
 
-The server binds to loopback (`127.0.0.1`) for local OBS use. Keep the unauthenticated operator API local.
+The server binds to loopback (`127.0.0.1`) for local OBS use. Keep the unauthenticated operator API local. `POST /api/trigger` requires `Content-Type: application/json`, so another website open in the streamer's browser cannot fire scenes through a simple cross-site request.
 
 | Route | Behavior |
 | --- | --- |
@@ -104,10 +115,10 @@ The server binds to loopback (`127.0.0.1`) for local OBS use. Keep the unauthent
 | `GET /overlay?debug=1` | Overlay with WS state, last scene ID, and health round-trip latency during playback |
 | `GET /overlay?backdrop=1` | Overlay over a stand-in gameplay backdrop for browser rehearsal (`backdrop=checker` shows a transparency checkerboard) |
 | `GET /overlay?preview=1` | Muted overlay used by the console monitor; never plays the sting |
-| `GET /control` | Operator console: style presets (`1`–`5`, `Enter`), cooldown, muted program monitor with tally, live scene details, session history, no-overlay warning |
+| `GET /control` | Operator console: style presets (`1`–`5`, `Enter`), optional pitch field, cooldown, muted program monitor with tally, live scene details (including the pitch), session history, no-overlay warning |
 | `GET /healthz` | `{ok, channel, model, uptimeSec, cutscenesServed, wsClients, previewClients, rolling}`; `wsClients` counts real overlays only |
-| `POST /api/trigger` | `{style?, user?}` → `202` accepted, `429` cooldown/busy/full, `400` invalid input |
-| `WS /overlay?role=overlay\|preview\|control` | `hello` with channel config and style metadata, followed by `cutscene`, `idle`, or `dropped` frames. `role` defaults to `overlay` |
+| `POST /api/trigger` | JSON `{style?, user?, pitch?}` → `202` accepted, `429` cooldown/busy/full, `400` invalid input, `415` not JSON |
+| `WS /overlay?role=overlay\|preview\|control` | `hello` with channel config and style metadata, followed by `cutscene` (with `pitch` when one was given), `idle`, or `dropped` frames. `role` defaults to `overlay` |
 
 ```sh
 curl -X POST http://localhost:3000/api/trigger \
@@ -119,19 +130,19 @@ The WS client reconnects with exponential backoff capped at five seconds. Local 
 
 ## Tests and verification
 
-The test files use only `node:test` and strict assertions, with injected provider mocks and pure chat helpers. They never connect to Twitch or a live LLM; the server test binds an ephemeral loopback port. They cover fenced and wrapped JSON, malformed output, validation and clamping, fallback rotation, credits, cooldown boundaries, hype-window math, command parsing, WebSocket role counting, late-join state, format retries, optional authentication, and timeout aborts.
+The test files use only `node:test` and strict assertions, with injected provider mocks and pure chat helpers. They never connect to Twitch or a live LLM; the server test binds an ephemeral loopback port. They cover fenced and wrapped JSON, malformed output, validation and clamping, fallback rotation, credits, cooldown boundaries, hype-window math, command and pitch parsing, pitch cleaning and blocklist rejection, the JSON-only trigger API, WebSocket role counting, late-join state, format retries, optional authentication, and timeout aborts.
 
-Install dependencies before running `npm test`. The suite is verified green (18/18).
+Install dependencies before running `npm test`. The suite is verified green (49/49).
 
 ## Built with OpenAI Codex
 
-Built with **OpenAI Codex**, from the director and rehearsal pipeline to the broadcast package and procedural audio. Codex session: `01a19dc4-534f-7690-b36b-33615188f337`. Post-build human direction passes: OBS-safe compositing (blend modes flattened), a `?backdrop=1` rehearsal backdrop, and WebSocket late-join scene replay. A later UI/UX pass, made with Claude Code, redesigned the operator console and landing page and restrained the overlay chrome (timecode, time-remaining line, film-style credits, word-by-word caption reveal, long-caption sizing, muted preview mode).
+Built with **OpenAI Codex**, from the director and rehearsal pipeline to the broadcast package and procedural audio. Codex session: `01a19dc4-534f-7690-b36b-33615188f337`. Post-build human direction passes: OBS-safe compositing (blend modes flattened), a `?backdrop=1` rehearsal backdrop, and WebSocket late-join scene replay. A later UI/UX pass, made with Claude Code, redesigned the operator console and landing page and restrained the overlay chrome (timecode, time-remaining line, film-style credits, word-by-word caption reveal, long-caption sizing, muted preview mode). A final Claude Code pass added viewer pitches (`!cutscene [style] [what happened]`), restored the pre-rendered film-grain tiles that a merge had reverted, and made the trigger API JSON-only.
 
 ## Hackathon submission notes
 
-Submission for **Codex x TwitchCon**. Innovation: viewers executive-produce cinematic moments directly from chat. Potential impact: streamers get instant, branded highlights without breaking play. Technological implementation: provider-pluggable generation, validated scripts, deterministic recovery, shared scene scheduling, and entirely synthesized sound in one process. Design: five broadcast treatments, deliberate timing, and a transparent, hands-off OBS overlay.
+Submission for **Codex x TwitchCon**. Innovation: viewers pitch what just happened and executive-produce the resulting cinematic moment directly from chat. Potential impact: streamers get instant, branded highlights without breaking play. Technological implementation: provider-pluggable generation, validated scripts, deterministic recovery, shared scene scheduling, and entirely synthesized sound in one process. Design: five broadcast treatments, deliberate timing, and a transparent, hands-off OBS overlay.
 
-Suggested demo: open `/overlay` in OBS, run simulation, show noir and anime, then trigger a Hollywood scene from the operator console or live chat. Point out the viewer credit, play a synthesized sting, and demonstrate fallback reliability with an unavailable provider. Use a configured provider for the live AI segment. Record the real overlay over gameplay for the submission video; the operator console is the production desk, while the overlay is the product.
+Suggested demo: open `/overlay` in OBS, run simulation, show noir and anime, then type `!cutscene hollywood <what just happened>` in live chat (or use the console's pitch field) so the audience sees the scene written around their moment. Point out the viewer credit, play a synthesized sting, and demonstrate fallback reliability with an unavailable provider. Use a configured provider for the live AI segment. Record the real overlay over gameplay for the submission video; the operator console is the production desk, while the overlay is the product.
 
 ## License
 

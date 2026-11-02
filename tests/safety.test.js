@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { blocklistHit, loadBlocklist, moderate } from '../src/safety.js';
+import { blocklistHit, loadBlocklist, moderate, cleanPitch, sanitizeTrigger, PITCH_MAX } from '../src/safety.js';
 
 const llm = { baseUrl: 'https://api.openai.com/v1', apiKey: 'fake-test-key' };
 
@@ -78,4 +78,18 @@ test('non-OpenAI providers and empty keys skip fetch', async () => {
 test('built-in list blocks severe slurs as whole words without false positives', () => {
   const slur = Buffer.from('ZmFnZ290', 'base64').toString('utf8');
   assert.deepEqual([blocklistHit(`what a ${slur}`), blocklistHit(`${slur.toUpperCase()}!`), blocklistHit('drape the grapes'), blocklistHit('raccoon city'), blocklistHit('kill yourself, chat said', loadBlocklist({}))], [true, true, false, false, true]);
+});
+
+test('cleanPitch strips control characters, links and mentions, caps length, and rejects blocklisted text', () => {
+  assert.equal(cleanPitch('one hp\u0000 clutch\u202e @mod https://x.example/a'), 'one hp clutch');
+  assert.equal(cleanPitch('a'.repeat(500)).length, PITCH_MAX);
+  assert.equal(cleanPitch('that was shit'), '');
+  assert.deepEqual([cleanPitch(undefined), cleanPitch(42), cleanPitch('   ')], ['', '', '']);
+});
+test('sanitizeTrigger is idempotent and leaves pitch-less triggers untouched', () => {
+  const plain = { user: 'a', message: '!cutscene' };
+  assert.equal(sanitizeTrigger(plain), plain);
+  const once = sanitizeTrigger({ user: 'a', pitch: ' duck rescue ', message: '!cutscene duck rescue' });
+  assert.deepEqual(sanitizeTrigger(once), once);
+  assert.deepEqual(sanitizeTrigger({ pitch: 'bullshit', message: '!cutscene bullshit' }), { pitch: undefined, message: '' });
 });

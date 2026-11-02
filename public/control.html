@@ -83,6 +83,12 @@
     .style-row:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: -2px; }
 
     .take { padding: 12px; border-top: 1px solid var(--border); }
+    .pitch { display: grid; gap: 6px; padding: 12px; border-top: 1px solid var(--border); }
+    .pitch label { display: flex; justify-content: space-between; color: var(--text-2); font-size: 12px; }
+    .pitch label span { color: var(--text-3); }
+    .pitch input { width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--bg); color: var(--text); }
+    .pitch input::placeholder { color: var(--text-3); }
+    .pitch input:focus-visible { outline-offset: 0; }
     #trigger { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 40px; border: 0; border-radius: var(--radius); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 600; cursor: pointer; }
     #trigger:hover:enabled { background: #ffffff; }
     #trigger:active:enabled { transform: translateY(1px); }
@@ -198,11 +204,15 @@
           <label class="style-row" style="--c:#ffc18c"><input type="radio" name="style" value="baywatch"><span class="radio"></span><span class="swatch"></span><span class="name">Baywatch</span><kbd class="kbd-only">4</kbd><span class="sub">Slow-mo · heroic sting</span></label>
           <label class="style-row" style="--c:#62d4ff"><input type="radio" name="style" value="sportscast"><span class="radio"></span><span class="swatch"></span><span class="name">Sportscast</span><kbd class="kbd-only">5</kbd><span class="sub">Breaking · heroic sting</span></label>
         </div>
+        <div class="pitch">
+          <label for="pitch-input">What just happened? <span>optional</span></label>
+          <input id="pitch-input" name="pitch" type="text" maxlength="100" autocomplete="off" spellcheck="true" placeholder="e.g. one HP clutch with a frying pan">
+        </div>
         <div class="take">
           <button id="trigger" type="submit" disabled><span id="trigger-label">Trigger scene</span><kbd class="kbd-only">↵</kbd><span id="cooldown" aria-hidden="true"></span></button>
           <p class="feedback" id="feedback" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="feedback-text">Connecting to server…</span></p>
         </div>
-        <p class="help">Viewers trigger with <code>!cutscene [style]</code>. The cooldown is shared between chat and this console.</p>
+        <p class="help">Viewers trigger with <code>!cutscene [style] [what happened]</code>. The pitch is story material for the AI director and never appears on stream. The cooldown is shared between chat and this console.</p>
       </form>
     </section>
 
@@ -223,6 +233,7 @@
         <dt>Style</dt><dd id="d-style"><span class="empty-value">—</span></dd>
         <dt>Caption</dt><dd id="d-caption"><span class="empty-value">—</span></dd>
         <dt>Tagline</dt><dd id="d-sub"><span class="empty-value">—</span></dd>
+        <dt>Pitch</dt><dd id="d-pitch"><span class="empty-value">—</span></dd>
         <dt>Producer</dt><dd id="d-credit"><span class="empty-value">—</span></dd>
         <dt>Remaining</dt><dd><span class="progress"><span class="track"><span class="fill" id="d-fill"></span></span><span class="num" id="d-remaining">—</span></span></dd>
       </dl>
@@ -330,8 +341,9 @@
         else if (typeof value === 'string') node.textContent = value;
         else node.replaceChildren(value);
       }
-      function setScene(scene) {
+      function setScene(scene, pitch) {
         state.scene = scene;
+        setValue('d-pitch', scene && pitch ? `“${pitch}”` : null);
         setValue('d-style', scene ? styleCell(scene.style) : null);
         setValue('d-caption', scene ? scene.caption : null);
         setValue('d-sub', scene ? scene.subCaption : null);
@@ -356,7 +368,7 @@
           const tr = el('tr', item.dropped ? 'dropped' : '');
           const td = (className, content) => { const cell = el('td', className); if (typeof content === 'string') cell.textContent = content; else cell.append(content); return cell; };
           const caption = td('caption-cell', item.caption);
-          caption.title = item.caption;
+          caption.title = item.pitch ? `${item.caption}\nPitch: ${item.pitch}` : item.caption;
           tr.append(td('col-n num', item.n), td('col-time num', item.time), td('col-style', item.style ? styleCell(item.style) : '—'), caption, td('col-prod', item.producer || '—'), td('col-len num', item.length || '—'));
           return tr;
         }));
@@ -372,12 +384,12 @@
           if (payload.type === 'hello') renderStyles(payload.styles);
           if (payload.type === 'cutscene' && payload.scene) {
             const scene = payload.scene;
-            setScene(scene);
+            setScene(scene, typeof payload.pitch === 'string' ? payload.pitch : '');
             if (!state.seen.has(payload.id)) {
               state.seen.add(payload.id);
               state.count += 1;
               const total = (Number(scene.durationMs) || 8000) + (Number(scene.elapsedMs) || 0);
-              addRow({ n: String(state.count).padStart(3, '0'), time: clock(), style: scene.style, caption: scene.caption, producer: producer(scene.credit), length: `${(total / 1000).toFixed(1)}s` });
+              addRow({ n: String(state.count).padStart(3, '0'), time: clock(), style: scene.style, caption: scene.caption, pitch: typeof payload.pitch === 'string' ? payload.pitch : '', producer: producer(scene.credit), length: `${(total / 1000).toFixed(1)}s` });
             }
             feedback('Scene on air', 'ok');
           }
@@ -420,10 +432,12 @@
         if ($('trigger').disabled) return;
         state.sending = true; tick();
         const style = selectedStyle();
+        const pitch = $('pitch-input').value.trim();
         try {
-          const response = await fetch('/api/trigger', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ style, user: 'operator' }), signal: AbortSignal.timeout(5000) });
+          const response = await fetch('/api/trigger', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ style, user: 'operator', ...(pitch ? { pitch } : {}) }), signal: AbortSignal.timeout(5000) });
           const result = await response.json();
           if (response.status === 202) {
+            $('pitch-input').value = '';
             state.cooldownTotal = result.cooldownMs; state.readyAt = Date.now() + result.cooldownMs;
             feedback(state.scene ? `${title(style)} queued behind the current scene` : `Generating ${title(style)} scene…`, 'busy');
           } else if (response.status === 429) {

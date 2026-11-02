@@ -3,6 +3,7 @@ import { createDirector } from './director.js';
 import { createChat } from './chat.js';
 import { createServer, createSceneQueue } from './server.js';
 import { startSimulation } from './simulate.js';
+import { sanitizeTrigger } from './safety.js';
 
 const flags = new Set(process.argv.slice(2));
 if ([...flags].some((flag) => !['--simulate', '--once'].includes(flag)) || (flags.has('--once') && !flags.has('--simulate'))) {
@@ -19,7 +20,8 @@ if ([...flags].some((flag) => !['--simulate', '--once'].includes(flag)) || (flag
     const onMessage = (text) => { history.push(text.slice(0, 500)); if (history.length > 20) history.shift(); };
     const direct = createDirector({ llm: config.llm, channel: config.channel, moderation: config.moderation, blocklist: config.blocklist, onFallback: () => console.log('  director ▸ local screenplay · fallback ready') });
     let queue;
-    const onTrigger = (trigger) => queue.trigger(trigger);
+    // Pitches are cleaned once at intake so the director, the console and the logs all see the same safe text.
+    const onTrigger = (trigger) => queue.trigger(sanitizeTrigger(trigger, config.blocklist));
     const server = createServer({ config, onTrigger });
     queue = createSceneQueue({ direct, broadcast: server.broadcast, cooldownSeconds: config.cooldownSeconds, recentChat: () => history.slice(), onServed: server.onServed });
     let chat;

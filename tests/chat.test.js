@@ -21,8 +21,12 @@ test('hype threshold is inclusive, disabled at zero, and debounces for 60 second
 test('hype tokens are whole words, counted per occurrence and case insensitive', () => {
   assert.equal(countHypeTokens('pog POGGERS! LUL W CLIP LETSGO EZ KEKW flower WW'), 8);
 });
-test('commands handle case, styles, custom commands, and excessive tokens', () => {
-  assert.deepEqual([parseCommand('!CUTSCENE ANIME'), parseCommand('!cutscene unknown'), parseCommand('!cutsceneX'), parseCommand('!cutscene noir too many'), parseCommand('!cinema noir', '!cinema')], [{ style: 'anime' }, { style: undefined }, null, null, { style: 'noir' }]);
+test('commands handle case, styles, custom commands, and viewer pitches', () => {
+  assert.deepEqual([parseCommand('!CUTSCENE ANIME'), parseCommand('!cutsceneX'), parseCommand('!cinema noir', '!cinema'), parseCommand('hello !cutscene')], [{ style: 'anime' }, null, { style: 'noir' }, null]);
+  assert.deepEqual(parseCommand('!cutscene noir   he missed  all six shots'), { style: 'noir', pitch: 'he missed all six shots' });
+  assert.deepEqual(parseCommand('!cutscene the duck rescue'), { style: undefined, pitch: 'the duck rescue' });
+  assert.deepEqual(parseCommand('!cutscene unknown'), { style: undefined, pitch: 'unknown' });
+  assert.equal(parseCommand(`!cutscene anime ${'x'.repeat(400)}`).pitch.length, 100);
 });
 test('trigger role truth table includes missing tags, viewers, subscribers, VIPs, mods, and broadcaster', () => {
   const viewers = [undefined, {}, { subscriber: true }, { badges: { founder: '0' } }, { badges: { vip: '1' } }, { mod: true, badges: { moderator: '1' } }, { badges: { broadcaster: '1' } }];
@@ -65,6 +69,16 @@ test('chat gates only commands, silently rejects viewers, and leaves hype unaffe
     { user: 'mod', style: 'anime', source: 'chat' }, { user: 'CHAT ITSELF', style: 'sportscast', source: 'hype' },
   ]);
   assert.deepEqual(fake.replies, ['🎬 CUTSCENE INITIATED for @mod by test-model — rolling…']);
+  await chat.disconnect();
+});
+test('a chat pitch reaches onTrigger with the style and the full message', async () => {
+  const fake = fakeChat();
+  const triggers = [];
+  const chat = await createChat({ config: { ...fake.config, triggerRole: 'everyone' }, Client: fake.Client, log: () => {},
+    onTrigger: (trigger) => { triggers.push(trigger); return { accepted: true }; } });
+  await chat.connect();
+  fake.message({ username: 'clip_enjoyer' }, '!cutscene noir he missed all six shots');
+  assert.deepEqual(triggers, [{ user: 'clip_enjoyer', message: '!cutscene noir he missed all six shots', style: 'noir', pitch: 'he missed all six shots', source: 'chat' }]);
   await chat.disconnect();
 });
 test('quiet-modes from a viewer still suppresses busy replies under role gating', async () => {
