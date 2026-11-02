@@ -10,8 +10,11 @@ export function extractJSON(text) {
   return parsed;
 }
 
-export async function chatCompletion(llm, messages, { fetchImpl = globalThis.fetch } = {}) {
+export async function chatCompletion(llm, messages, { fetchImpl = globalThis.fetch, signal } = {}) {
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
   const timeout = setTimeout(() => controller.abort(), llm.timeoutMs);
   const headers = { 'Content-Type': 'application/json' };
   if (llm.apiKey) headers.Authorization = `Bearer ${llm.apiKey}`;
@@ -39,5 +42,6 @@ export async function chatCompletion(llm, messages, { fetchImpl = globalThis.fet
     throw error;
   } finally {
     clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
   }
 }

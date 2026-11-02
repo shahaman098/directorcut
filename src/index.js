@@ -17,7 +17,7 @@ if ([...flags].some((flag) => !['--simulate', '--once'].includes(flag)) || (flag
   } else {
     const history = [];
     const onMessage = (text) => { history.push(text.slice(0, 500)); if (history.length > 20) history.shift(); };
-    const direct = createDirector({ llm: config.llm, channel: config.channel, onFallback: () => console.log('  director ▸ local screenplay · fallback ready') });
+    const direct = createDirector({ llm: config.llm, channel: config.channel, moderation: config.moderation, blocklist: config.blocklist, onFallback: () => console.log('  director ▸ local screenplay · fallback ready') });
     let queue;
     const onTrigger = (trigger) => queue.trigger(trigger);
     const server = createServer({ config, onTrigger });

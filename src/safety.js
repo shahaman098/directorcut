@@ -1,0 +1,61 @@
+import { readFileSync } from 'node:fs';
+
+const BUILT_INS = Object.freeze(['fuck', 'fucking', 'fucker', 'motherfucker', 'shit', 'bullshit', 'cunt', 'cocksucker', 'dickhead', 'asshole']);
+
+export function loadBlocklist(env = {}) {
+  let extra = '';
+  if (env.BLOCKLIST_FILE) {
+    try { extra = readFileSync(env.BLOCKLIST_FILE, 'utf8'); } catch { /* An optional blocklist may be absent. */ }
+  }
+  return [...new Set([...BUILT_INS, ...extra.split(/\r?\n/).map((line) => line.split('#')[0].trim())]
+    .map((term) => term.toLowerCase()).filter(Boolean))];
+}
+
+export function blocklistHit(text, terms = BUILT_INS) {
+  return terms.some((term) => {
+    if (typeof term !== 'string' || !term.trim()) return false;
+    const escaped = term.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, 'iu').test(String(text));
+  });
+}
+
+export async function moderate(texts, llm, { fetchImpl = globalThis.fetch, log = () => {}, signal } = {}) {
+  if (!llm.baseUrl?.includes('api.openai.com') || !llm.apiKey) return { flagged: false, reason: 'unavailable' };
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  let onAbort;
+  const aborted = new Promise((resolve) => {
+    onAbort = () => resolve({ flagged: true, reason: 'timeout' });
+    controller.signal.addEventListener('abort', onAbort, { once: true });
+  });
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
+  const timeout = setTimeout(abort, 1500);
+  try {
+    const request = async () => {
+      if (controller.signal.aborted) return { flagged: true, reason: 'timeout' };
+      const response = await fetchImpl(`${llm.baseUrl.replace(/\/+$/, '')}/moderations`, {
+        method: 'POST', signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${llm.apiKey}` },
+        body: JSON.stringify({ model: 'omni-moderation-latest', input: texts }),
+      });
+      if (!response.ok) throw new Error('Moderation endpoint unavailable.');
+      const body = await response.json();
+      if (!Array.isArray(body?.results) || !body.results.length
+        || body.results.some((result) => typeof result?.flagged !== 'boolean')) throw new Error('Invalid moderation results.');
+      const flagged = body.results.some((result) => result.flagged);
+      return { flagged, reason: flagged ? 'flagged' : 'clean' };
+    };
+    const result = await Promise.race([request(), aborted]);
+    if (result.flagged) log(`  safety ▸ moderation ${result.reason}`);
+    return result;
+  } catch (error) {
+    const reason = controller.signal.aborted || error?.name === 'AbortError' ? 'timeout' : 'error';
+    log(`  safety ▸ moderation ${reason}`);
+    return { flagged: true, reason };
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
+    controller.signal.removeEventListener('abort', onAbort);
+  }
+}

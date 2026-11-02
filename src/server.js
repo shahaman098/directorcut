@@ -18,6 +18,7 @@ export function createSceneQueue({ direct, broadcast, cooldownSeconds, recentCha
   let closed = false;
   let timer;
   let lastFireTs = null;
+  let take = 0;
   const settle = () => { if (!active && !pending.length) waiters.splice(0).forEach((resolve) => resolve()); };
   async function drain() {
     if (closed || active || !pending.length) { settle(); return; }
@@ -27,7 +28,7 @@ export function createSceneQueue({ direct, broadcast, cooldownSeconds, recentCha
       const scene = await direct(trigger, recentChat());
       if (closed) return;
       const id = randomUUID();
-      broadcast({ type: 'cutscene', scene, id });
+      broadcast({ type: 'cutscene', scene, id, take: ++take });
       onServed();
       log(`  rolling ▸ ${scene.style.toUpperCase()} · ${scene.credit.replace('EXECUTIVE PRODUCER: ', '')} · ${(scene.durationMs / 1000).toFixed(1)}s`);
       timer = setTimeout(() => {
@@ -79,7 +80,7 @@ async function readJSON(request) {
   catch { throw Object.assign(new Error('Expected a JSON body.'), { status: 400 }); }
 }
 
-export function createServer({ config, onTrigger }) {
+export function createServer({ config, onTrigger, WebSocketServerImpl = WebSocketServer }) {
   const started = Date.now();
   let cutscenesServed = 0;
   const json = (response, status, value, headers = {}) => {
@@ -123,7 +124,7 @@ export function createServer({ config, onTrigger }) {
   });
   server.requestTimeout = 10000;
   server.headersTimeout = 10000;
-  const wss = new WebSocketServer({ server, path: '/overlay', maxPayload: 4096 });
+  const wss = new WebSocketServerImpl({ server, path: '/overlay', maxPayload: 4096 });
   // HTTP listen failures are reported by listen(); avoid a second unhandled emitter error.
   wss.on('error', () => {});
   // Late joiners (OBS browser-source reload, judge opening the overlay mid-scene)
@@ -135,7 +136,7 @@ export function createServer({ config, onTrigger }) {
     socket.send(JSON.stringify({ type: 'hello', config: { channel: config.channel } }));
     if (currentScene) {
       const remaining = Math.max(2500, (currentScene.scene.durationMs || 8000) - (Date.now() - sceneStartedAt));
-      socket.send(JSON.stringify({ type: 'cutscene', scene: { ...currentScene.scene, durationMs: remaining }, id: currentScene.id }));
+      socket.send(JSON.stringify({ type: 'cutscene', scene: { ...currentScene.scene, durationMs: remaining }, id: currentScene.id, take: currentScene.take }));
     }
   });
   return {

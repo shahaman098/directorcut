@@ -1,5 +1,6 @@
 import { chatCompletion, extractJSON } from './llm.js';
 import { STYLES, BADGES, STINGS, isStyle } from './styles.js';
+import { blocklistHit, loadBlocklist, moderate } from './safety.js';
 
 const TEMPLATES = {
   noir: [
@@ -68,18 +69,39 @@ export function buildPrompt(channel, trigger, recentChat = []) {
   ];
 }
 
-export function createDirector({ llm, channel, complete = chatCompletion, onFallback = () => {} }) {
+export function createDirector({ llm, channel, complete = chatCompletion, onFallback = () => {}, moderation = 'auto', blocklist = loadBlocklist(), fetchImpl = globalThis.fetch, log = console.log }) {
   const counters = new Map();
   return async (trigger, recentChat = []) => {
     const style = trigger.source === 'hype' ? 'sportscast' : (isStyle(trigger.style) ? trigger.style : 'noir');
     const counter = counters.get(style) || 0;
     counters.set(style, counter + 1);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), llm.timeoutMs || 4000);
+    let onAbort;
+    const expired = new Promise((_resolve, reject) => {
+      onAbort = () => reject(new Error('Director deadline exceeded.'));
+      controller.signal.addEventListener('abort', onAbort, { once: true });
+    });
     try {
-      const text = await complete(llm, buildPrompt(channel, trigger, recentChat));
-      return validateScene(extractJSON(text), trigger);
+      const text = await Promise.race([complete(llm, buildPrompt(channel, trigger, recentChat), { signal: controller.signal }), expired]);
+      const scene = validateScene(extractJSON(text), trigger);
+      let flagged = blocklistHit(scene.caption, blocklist) || blocklistHit(scene.subCaption, blocklist);
+      if (!flagged && moderation !== 'off') {
+        const result = await moderate([scene.caption, scene.subCaption], llm, { fetchImpl, log, signal: controller.signal });
+        flagged = result.flagged;
+      }
+      if (flagged) {
+        log('  director ▸ moderated · fallback');
+        onFallback();
+        return fallbackScene(trigger, channel, counter);
+      }
+      return scene;
     } catch {
       onFallback();
       return fallbackScene(trigger, channel, counter);
+    } finally {
+      clearTimeout(timeout);
+      controller.signal.removeEventListener('abort', onAbort);
     }
   };
 }

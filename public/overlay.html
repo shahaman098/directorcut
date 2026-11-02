@@ -15,7 +15,7 @@
     .vignette { background: radial-gradient(ellipse at 50% 40%, transparent 20%, #08080c55 62%, #000e 100%); }
     .tint { background: #3d32204d; }
     .light { background: radial-gradient(ellipse at 110% 15%, #ffd77c55, transparent 60%); }
-    #grain { width: 100%; height: 100%; opacity: 0; image-rendering: pixelated; }
+    #grain { position: fixed; width: 100%; height: 100%; opacity: 0; background-repeat: repeat; }
     .bar { height: 12vh; background: #08090b; z-index: 6; transition: transform .3s cubic-bezier(.2,.8,.2,1); will-change: transform; }
     .bar.top { bottom: auto; transform: translateY(-101%); border-bottom: 1px solid #ffffff1a; }
     .bar.bottom { top: auto; transform: translateY(101%); border-top: 1px solid #ffffff1a; }
@@ -108,11 +108,11 @@
         <path d="M0 0 375 400 40 0ZM180 0 430 365 225 0ZM500 0 495 350 540 0ZM770 0 580 380 830 0ZM1000 0 650 420 1000 70ZM1000 250 670 460 1000 300ZM1000 490 700 505 1000 530ZM1000 800 650 570 1000 860ZM1000 1000 610 640 930 1000ZM710 1000 550 675 660 1000ZM450 1000 480 680 400 1000ZM100 1000 410 640 20 1000ZM0 800 355 570 0 740ZM0 550 320 505 0 500ZM0 300 350 450 0 240Z"/>
       </g>
     </svg>
-    <canvas id="grain" class="layer" width="240" height="135" aria-hidden="true"></canvas>
+    <div id="grain" class="layer" aria-hidden="true"></div>
     <div class="frame" aria-hidden="true"></div>
     <div class="bar top"><div class="bar-content"><span class="wordmark">DirectorCut<b>.</b></span><span class="top-note">A CHAT ORIGINAL PICTURE</span><span id="channel">LIVE CINEMA</span></div></div>
     <div class="badge-row"><span class="badge"><i class="red-dot" aria-hidden="true"></i><span id="badge">REPLAY</span></span><span class="style-label" id="style-label">NOIR / DIR. AI</span></div>
-    <div class="scoreboard">CHAT <span aria-hidden="true">//</span> 01<small>INSTANT CLASSIC · LIVE</small></div>
+    <div class="scoreboard">CHAT <span aria-hidden="true">//</span> <span id="score-take">01</span><small>INSTANT CLASSIC · LIVE</small></div>
     <section class="caption-block"><div class="eyebrow" id="eyebrow">Every moment has a movie</div><h1 id="caption"></h1><p id="sub-caption"></p></section>
     <div class="bar bottom"><div class="bar-content"><span class="take">ORIGINAL MOMENT<br><strong id="take">TAKE 001 / LIVE</strong></span><span class="credit" id="credit"></span></div></div>
     <div class="flash" aria-hidden="true"></div>

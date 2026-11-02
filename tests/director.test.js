@@ -34,3 +34,80 @@ test('all five fallback treatments rotate, and provider failures still produce a
   const director = createDirector({ llm: {}, channel: 'test', complete: async () => { throw new Error('offline'); } });
   assert.deepEqual(await director(trigger), fallbackScene(trigger, 'test', 0));
 });
+test('blocklisted captions and subcaptions use fallback before remote moderation', async () => {
+  let calls = 0;
+  const logs = [];
+  for (const scene of [{ ...valid, caption: 'What the fuck!' }, { ...valid, subCaption: 'BULLSHIT!' }]) {
+    const director = createDirector({
+      llm: { baseUrl: 'https://api.openai.com/v1', apiKey: 'fake-test-key' }, channel: 'test',
+      complete: async () => JSON.stringify(scene), log: (line) => logs.push(line),
+      fetchImpl: async () => { calls += 1; throw new Error('Unexpected fetch'); },
+    });
+    assert.deepEqual(await director(trigger), fallbackScene(trigger, 'test', 0));
+  }
+  assert.deepEqual([calls, logs], [0, ['  director ▸ moderated · fallback', '  director ▸ moderated · fallback']]);
+});
+test('flagged or failed moderation uses the deterministic fallback and reports why', async () => {
+  for (const fetchImpl of [
+    async () => Response.json({ results: [{ flagged: true }] }),
+    async () => { throw new Error('offline'); },
+  ]) {
+    const logs = [];
+    let fallbacks = 0;
+    const director = createDirector({
+      llm: { baseUrl: 'https://api.openai.com/v1', apiKey: 'fake-test-key' }, channel: 'test',
+      complete: async () => JSON.stringify(valid), fetchImpl, log: (line) => logs.push(line), onFallback: () => { fallbacks += 1; },
+    });
+    assert.deepEqual(await director(trigger), fallbackScene(trigger, 'test', 0));
+    assert.equal(logs.includes('  director ▸ moderated · fallback'), true);
+    assert.equal(logs.some((line) => /moderation (flagged|error)/.test(line)), true);
+    assert.equal(fallbacks, 1);
+  }
+});
+test('moderation off never fetches but still applies built-in and configured blocklists', async () => {
+  let calls = 0;
+  for (const [scene, blocklist, expected] of [
+    [valid, undefined, valid],
+    [{ ...valid, caption: 'fuck' }, undefined, fallbackScene(trigger, 'test', 0)],
+    [{ ...valid, subCaption: 'Spoiler!' }, ['spoiler'], fallbackScene(trigger, 'test', 0)],
+  ]) {
+    const director = createDirector({
+      llm: { baseUrl: 'https://api.openai.com/v1', apiKey: 'fake-test-key' }, channel: 'test', moderation: 'off', blocklist,
+      complete: async () => JSON.stringify(scene), log: () => {},
+      fetchImpl: async () => { calls += 1; throw new Error('Unexpected fetch'); },
+    });
+    assert.deepEqual(await director(trigger), expected);
+  }
+  assert.equal(calls, 0);
+});
+test('clean moderation and unavailable local moderation preserve validated scenes', async () => {
+  for (const llm of [
+    { baseUrl: 'https://api.openai.com/v1', apiKey: 'fake-test-key' },
+    { baseUrl: 'http://local.invalid/v1', apiKey: '' },
+  ]) {
+    const director = createDirector({ llm, channel: 'test', complete: async () => JSON.stringify(valid), fetchImpl: async () => Response.json({ results: [{ flagged: false }] }) });
+    assert.deepEqual(await director(trigger), valid);
+  }
+});
+test('moderation shares the overall director deadline and aborts its request', async () => {
+  let signal;
+  let fallbacks = 0;
+  const director = createDirector({
+    llm: { baseUrl: 'https://api.openai.com/v1', apiKey: 'fake-test-key', timeoutMs: 30 }, channel: 'test',
+    complete: async () => JSON.stringify(valid), log: () => {}, onFallback: () => { fallbacks += 1; },
+    fetchImpl: (_url, options) => { signal = options.signal; return new Promise(() => {}); },
+  });
+  const start = performance.now();
+  assert.deepEqual(await director(trigger), fallbackScene(trigger, 'test', 0));
+  assert.equal(performance.now() - start < 1000, true);
+  assert.deepEqual([signal.aborted, fallbacks], [true, 1]);
+});
+test('a stalled completion is bounded by the director deadline too', async () => {
+  let signal;
+  const director = createDirector({
+    llm: { timeoutMs: 15 }, channel: 'test',
+    complete: (_llm, _messages, options) => { signal = options.signal; return new Promise(() => {}); },
+  });
+  assert.deepEqual(await director(trigger), fallbackScene(trigger, 'test', 0));
+  assert.equal(signal.aborted, true);
+});
