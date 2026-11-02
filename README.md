@@ -50,7 +50,7 @@ Fake chat ────────┘    └─ deterministic fallback          
 
 One Node process hosts the pages, API, WebSocket server, Twitch connection, and scene queue. The LLM produces a small JSON script. The server validates and truncates captions, clamps playback to 5–12 seconds, and rebuilds every credit from the actual trigger. Chat is untrusted prompt context, and every visible model string is rendered as text.
 
-The production cooldown is shared by chat, hype, and operator requests. Chat commands received while generation or playback is active are declined; an authenticated bot posts a rate-limited busy reply unless quiet mode is active. The operator pipeline supports at most **two waiting scenes** behind one active scene; a third waiting request is dropped and broadcasts `dropped`. Accepted scenes broadcast `cutscene`, finish with `idle`, then advance the queue. Connect an overlay before triggering to see the full sequence; a newly connected overlay waits for the next scene.
+The production cooldown is shared by chat, hype, and operator requests. Chat commands received while generation or playback is active are declined; an authenticated bot posts a rate-limited busy reply unless quiet mode is active. The operator pipeline supports at most **two waiting scenes** behind one active scene; a third waiting request is dropped and broadcasts `dropped`. Accepted scenes broadcast `cutscene`, finish with `idle`, then advance the queue. An overlay that connects mid-scene (for example, an OBS source reload) receives the live scene with its remaining duration.
 
 ## Style presets
 
