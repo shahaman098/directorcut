@@ -47,25 +47,39 @@
   }
 
   const pad = (value) => String(value).padStart(2, '0');
-  // One rAF loop drives the film grain and the SMPTE-style timecode (24 fps frames).
+  // Four noise tiles are generated once at load; playback just cycles them, so OBS never
+  // regenerates pixels per frame. 128px tiles drawn at 512px keep the soft 4x grain scale.
+  const grainTiles = (() => {
+    try {
+      const canvas = Object.assign(document.createElement('canvas'), { width: 128, height: 128 });
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) return [];
+      const frame = ctx.createImageData(128, 128);
+      return Array.from({ length: 4 }, () => {
+        for (let i = 0; i < frame.data.length; i += 4) {
+          const v = Math.random() * 255;
+          frame.data[i] = v; frame.data[i + 1] = v; frame.data[i + 2] = v; frame.data[i + 3] = 255;
+        }
+        ctx.putImageData(frame, 0, 0);
+        return `url("${canvas.toDataURL('image/png')}")`;
+      });
+    } catch { return []; }
+  })();
+  // One rAF loop drives the grain tile swap (~12 fps, film-like) and the SMPTE-style timecode (24 fps frames).
   function animateFrame() {
-    const canvas = $('grain');
-    const ctx = reducedMotion ? null : canvas.getContext('2d', { alpha: false });
-    const frame = ctx?.createImageData(canvas.width, canvas.height);
+    const grain = $('grain');
     const timecode = $('timecode');
-    let previous = 0;
+    const tiles = reducedMotion ? grainTiles.slice(0, 1) : grainTiles;
+    let previous = -Infinity;
+    let tile = 0;
     const draw = (now) => {
       if (root.hidden) return;
       const elapsed = Math.max(0, Date.now() - sceneStart);
       const seconds = Math.floor(elapsed / 1000);
       const code = `00:${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}:${pad(Math.floor((elapsed % 1000) / 1000 * 24))}`;
       if (timecode.textContent !== code) timecode.textContent = code;
-      if (ctx && now - previous > 80) {
-        for (let i = 0; i < frame.data.length; i += 4) {
-          const v = Math.random() * 255;
-          frame.data[i] = v; frame.data[i + 1] = v; frame.data[i + 2] = v; frame.data[i + 3] = 255;
-        }
-        ctx.putImageData(frame, 0, 0);
+      if (tiles.length && now - previous > 80) {
+        grain.style.backgroundImage = tiles[tile++ % tiles.length];
         previous = now;
       }
       grainFrame = requestAnimationFrame(draw);

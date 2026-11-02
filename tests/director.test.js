@@ -122,3 +122,25 @@ test('prompt strips @mentions so the model never echoes viewer handles', () => {
   const [system, user] = buildPrompt('test', { ...trigger, message: '!cutscene @someone_else' }, ['lurker: @target_user is washed']);
   assert.deepEqual([system.content.includes('@target_user'), user.content.includes('@someone_else'), system.content.includes('lurker: is washed')], [false, false, true]);
 });
+
+test('a viewer pitch reaches the model as viewerPitch, cleaned of links and mentions', async () => {
+  let messages;
+  const director = createDirector({ llm: { timeoutMs: 1000 }, channel: 'test', moderation: 'off', log: () => {},
+    complete: async (_llm, value) => { messages = value; return JSON.stringify(valid); } });
+  await director({ ...trigger, pitch: 'he missed six shots @rival see clips.tv/x', message: '!cutscene noir he missed six shots' });
+  const user = JSON.parse(messages[1].content);
+  assert.equal(user.viewerPitch, 'he missed six shots see');
+  assert.match(messages[0].content, /viewerPitch/);
+});
+test('a blocklisted pitch is dropped together with the message that carried it', async () => {
+  let messages;
+  const director = createDirector({ llm: { timeoutMs: 1000 }, channel: 'test', moderation: 'off', blocklist: ['badword'], log: () => {},
+    complete: async (_llm, value) => { messages = value; return JSON.stringify(valid); } });
+  const scene = await director({ ...trigger, pitch: 'what a BADWORD play', message: '!cutscene noir what a BADWORD play' });
+  const user = JSON.parse(messages[1].content);
+  assert.deepEqual([user.viewerPitch, user.triggeringMessage, messages[1].content.toLowerCase().includes('badword')], [undefined, '!cutscene', false]);
+  assert.equal(scene.caption, valid.caption);
+});
+test('no pitch means no viewerPitch field', () => {
+  assert.equal('viewerPitch' in JSON.parse(buildPrompt('test', trigger)[1].content), false);
+});

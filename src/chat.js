@@ -1,4 +1,5 @@
 import { isStyle } from './styles.js';
+import { PITCH_MAX } from './safety.js';
 
 const HYPE = new Set(['LUL', 'POG', 'POGGERS', 'KEKW', 'W', 'CLIP', 'LETSGO', 'EZ']);
 export const checkCooldown = (lastFireTs, now, cooldownSec) => lastFireTs == null || now - lastFireTs >= cooldownSec * 1000;
@@ -22,10 +23,14 @@ export function shouldTriggerOnHype(windowCounts, threshold, lastAutoTs, now) {
     && pruneHypeWindow(windowCounts, now).reduce((sum, entry) => sum + entry.count, 0) >= threshold;
 }
 
+/** `!cutscene [style] [pitch…]` — everything after the optional style is the viewer's pitch. */
 export function parseCommand(message, command = '!cutscene') {
-  const tokens = message.trim().split(/\s+/);
-  if (tokens.length > 3 || tokens[0].toLowerCase() !== command.toLowerCase()) return null;
-  return { style: isStyle(tokens[1]?.toLowerCase()) ? tokens[1].toLowerCase() : undefined };
+  const tokens = String(message).trim().split(/\s+/);
+  if (tokens[0].toLowerCase() !== command.toLowerCase()) return null;
+  const rest = tokens.slice(1);
+  const style = isStyle(rest[0]?.toLowerCase()) ? rest.shift().toLowerCase() : undefined;
+  const pitch = rest.join(' ').slice(0, PITCH_MAX).trim();
+  return pitch ? { style, pitch } : { style };
 }
 
 export async function createChat({ config, onTrigger, onMessage = () => {}, log = console.log, Client }) {
@@ -63,7 +68,7 @@ export async function createChat({ config, onTrigger, onMessage = () => {}, log 
     if (count) counts.push({ ts: now, count });
     const command = parseCommand(message, config.triggerCommand);
     if (command && isAllowed(tags, config.triggerRole || 'everyone')) {
-      const result = onTrigger({ user, message, style: command.style, source: 'chat' });
+      const result = onTrigger({ user, message, style: command.style, pitch: command.pitch, source: 'chat' });
       if (result.accepted) {
         void say(`🎬 CUTSCENE INITIATED for @${user} by ${config.llm.model} — rolling…`);
       } else if (result.reason === 'busy' && now >= quietUntil

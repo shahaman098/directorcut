@@ -10,6 +10,26 @@ const LINKS = /\b(?:https?:\/\/|www\.)\S+|\b[\w-]+\.(?:com|net|org|tv|gg|io|ly|x
 /** Strip links and @mentions from untrusted chat before it reaches the model. */
 export const scrub = (text) => String(text).replace(LINKS, '').replace(/@\w+/g, '').replace(/\s{2,}/g, ' ').trim();
 
+export const PITCH_MAX = 100;
+
+/**
+ * A viewer's one-line "what just happened" pitch. Untrusted: links, @mentions and control
+ * characters are stripped, length is capped, and any blocklisted term drops the whole pitch.
+ * Only moderated model output ever reaches the overlay; the pitch itself is never rendered.
+ */
+export function cleanPitch(text, terms = BUILT_INS) {
+  if (typeof text !== 'string') return '';
+  const pitch = scrub(text.replace(/[\p{Cc}\p{Cf}]/gu, ' ')).slice(0, PITCH_MAX).trim();
+  return pitch && !blocklistHit(pitch, terms) ? pitch : '';
+}
+
+/** Clean a trigger's pitch; a rejected pitch also blanks the chat message that carried it. Idempotent. */
+export function sanitizeTrigger(trigger, terms = BUILT_INS) {
+  if (!trigger || trigger.pitch === undefined) return trigger;
+  const pitch = cleanPitch(trigger.pitch, terms);
+  return pitch ? { ...trigger, pitch } : { ...trigger, pitch: undefined, message: '' };
+}
+
 export function loadBlocklist(env = {}) {
   let extra = '';
   if (env.BLOCKLIST_FILE) {

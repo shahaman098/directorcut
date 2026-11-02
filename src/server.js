@@ -30,7 +30,8 @@ export function createSceneQueue({ direct, broadcast, cooldownSeconds, recentCha
       const scene = await direct(trigger, recentChat());
       if (closed) return;
       const id = randomUUID();
-      broadcast({ type: 'cutscene', scene, id, take: ++take });
+      // The cleaned pitch rides alongside the scene for the operator console; the overlay never renders it.
+      broadcast({ type: 'cutscene', scene, id, take: ++take, ...(trigger.pitch ? { pitch: trigger.pitch } : {}) });
       onServed();
       log(`  rolling ▸ ${scene.style.toUpperCase()} · ${scene.credit.replace('EXECUTIVE PRODUCER: ', '')} · ${(scene.durationMs / 1000).toFixed(1)}s`);
       timer = setTimeout(() => {
@@ -100,14 +101,21 @@ export function createServer({ config, onTrigger, WebSocketServerImpl = WebSocke
         return;
       }
       if (request.method === 'POST' && url.pathname === '/api/trigger') {
+        // Requiring JSON forces a CORS preflight, so other websites open in the streamer's browser cannot fire scenes.
+        if (!/^application\/json\b/i.test(request.headers['content-type'] || '')) {
+          json(response, 415, { error: 'Send Content-Type: application/json.' });
+          return;
+        }
         const body = await readJSON(request);
         if (!body || typeof body !== 'object' || Array.isArray(body)
           || (body.style !== undefined && !isStyle(body.style))
-          || (body.user !== undefined && (typeof body.user !== 'string' || body.user.length > 100))) {
-          json(response, 400, { error: 'Expected {style?, user?} with a known style and a string user.' });
+          || (body.user !== undefined && (typeof body.user !== 'string' || body.user.length > 100))
+          || (body.pitch !== undefined && (typeof body.pitch !== 'string' || body.pitch.length > 300))) {
+          json(response, 400, { error: 'Expected {style?, user?, pitch?} with a known style and string user/pitch.' });
           return;
         }
-        const result = onTrigger({ style: body.style, user: body.user || 'operator', message: 'Operator requested a test cutscene.', source: 'manual' });
+        const pitch = body.pitch?.trim() || undefined;
+        const result = onTrigger({ style: body.style, user: body.user || 'operator', pitch, message: pitch || 'Operator requested a test cutscene.', source: 'manual' });
         json(response, result.accepted ? 202 : 429, result, result.accepted ? {} : { 'Retry-After': String(Math.max(1, Math.ceil(result.retryAfterMs / 1000))) });
         return;
       }

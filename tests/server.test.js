@@ -19,6 +19,7 @@ test('queue broadcasts increasing takes across scenes and drops do not consume a
   await queue.whenIdle();
   const cutscenes = payloads.filter(({ type }) => type === 'cutscene');
   assert.deepEqual(cutscenes.map(({ take }) => take), [1, 2, 3, 4]);
+  assert.equal(cutscenes.some((payload) => 'pitch' in payload), false);
   assert.equal(new Set(cutscenes.map(({ id }) => id)).size, 4);
   assert.equal(cutscenes.every((payload) => payload.scene === scene), true);
   assert.equal(payloads.filter(({ type }) => type === 'dropped').length, 1);
@@ -100,9 +101,24 @@ test('server tags socket roles, ships style metadata, and serves the console pag
     assert.match(response.headers.get('content-type'), /text\/html/);
   }
 
-  const bad = await fetch(`${base}/api/trigger`, { method: 'POST', body: JSON.stringify({ style: 'western' }) });
-  assert.equal(bad.status, 400);
+  const post = (body, headers = { 'Content-Type': 'application/json' }) => fetch(`${base}/api/trigger`, { method: 'POST', headers, body: JSON.stringify(body) });
+  // A cross-site form or text/plain fetch cannot fire a scene: JSON is required.
+  assert.equal((await post({ style: 'noir' }, { 'Content-Type': 'text/plain' })).status, 415);
+  assert.equal((await post({ style: 'western' })).status, 400);
+  assert.equal((await post({ pitch: 42 })).status, 400);
+  assert.equal((await post({ pitch: 'x'.repeat(301) })).status, 400);
   assert.equal(triggers.length, 0);
+  assert.equal((await post({ style: 'anime', pitch: '  one hp clutch  ' })).status, 202);
+  assert.deepEqual([triggers[0].pitch, triggers[0].message, triggers[0].source], ['one hp clutch', 'one hp clutch', 'manual']);
 
   for (const { socket } of [overlay, preview, control]) socket.close();
+});
+
+test('a viewer pitch rides with the broadcast for the console', async (t) => {
+  const payloads = [];
+  const queue = createSceneQueue({ direct: async () => ({ ...fallbackScene(), durationMs: 1 }), broadcast: (payload) => payloads.push(payload), cooldownSeconds: 0, log: () => {} });
+  t.after(() => queue.stop());
+  queue.trigger({ source: 'chat', pitch: 'swam the lake for a duck' });
+  await queue.whenIdle();
+  assert.equal(payloads.find(({ type }) => type === 'cutscene').pitch, 'swam the lake for a duck');
 });
