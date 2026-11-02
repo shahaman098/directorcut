@@ -121,7 +121,7 @@ The WS client reconnects with exponential backoff capped at five seconds. Local 
 
 The test files use only `node:test` and strict assertions, with injected provider mocks and pure chat helpers. They never connect to Twitch or a live LLM; the server test binds an ephemeral loopback port. They cover fenced and wrapped JSON, malformed output, validation and clamping, fallback rotation, credits, cooldown boundaries, hype-window math, command parsing, WebSocket role counting, late-join state, format retries, optional authentication, and timeout aborts.
 
-Install dependencies before running `npm test`. The suite is verified green (18/18).
+Install dependencies before running `npm test`. The suite is verified green (42/42) on the submission build.
 
 ## Built with OpenAI Codex
 
