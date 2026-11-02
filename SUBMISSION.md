@@ -1,69 +1,86 @@
-# DirectorCut — Devpost submission
+# SUBMISSION.md — DirectorCut (Codex x TwitchCon)
 
-## Project name
-DirectorCut
+Paste-ready Devpost text + video script. Facts verified 21:25 GMT, 2 Nov 2026:
+`main` @ `19db8be` (viewer pitches, grain-tile fix, JSON-only trigger API, safety fixes, control-room UI), `npm test` → **49/49 pass**, repo public at the URL below.
+This file lives on `claude/laughing-goodall-bgvhwx` — paste from here.
 
-## Tagline (Devpost "elevator pitch")
-Chat calls the cutscene. An AI director writes the trailer. The viewer who called it gets the executive producer credit, live over the stream.
+## Form fields
 
-## Built with
-javascript, node.js, openai, codex, twitch, tmi.js, websockets, obs-studio, web-audio-api
-
-## Links
-- Repo: https://github.com/shahaman098/directorcut
-- Demo video: <YouTube unlisted link>
-- Codex session ID: 01a19dc4-534f-7690-b36b-33615188f337 (confirm with `/status` in Codex before submitting)
+- **Project name:** DirectorCut — AI cutscene director for Twitch
+- **Tagline:** Viewers type `!cutscene anime one HP clutch with a frying pan` — the pitch becomes story material, an AI director writes the scene, and your stream instantly becomes cinema.
+- **Code repo (public):** https://github.com/shahaman098/directorcut
+- **Codex session ID:** `01a19dc4-534f-7690-b36b-33615188f337` — re-verify with `/status` in the build thread before pasting
+- **Demo video:** `<PASTE YOUTUBE URL>` — upload as **PUBLIC**. The rules require the video to be "made publicly visible on YouTube"; unlisted risks failing a hard requirement. Delete it after judging if you like. Not "made for kids".
+- **Screenshots:** 3–4 — overlay mid-scene (noir + anime), operator console showing a viewer pitch in scene details, test suite green, the README architecture diagram.
 
 ---
 
 ## Inspiration
-The best moments on stream disappear into the chat scroll in about four seconds. Viewers spam "CLIP IT", someone maybe makes a clip, and the moment is gone. We wanted chat to do more than react. We wanted viewers to *produce* the moment, live, with their name on it.
+
+A streamer's best moment dies in ten seconds. Chat erupts — LULs, clips, Ws — and then the scroll swallows it. Turning that hype into a story means hours in an editor after the stream, and small channels never get the TV-production polish that big broadcasts have. We wanted the hype itself to have a director's chair.
 
 ## What it does
-A viewer types `!cutscene` (optionally `!cutscene anime`, `noir`, `hollywood`, `baywatch` or `sportscast`). Within seconds:
 
-- An **AI director** writes a miniature movie-trailer script about the moment, using recent chat as context.
-- A **cinematic overlay** takes over the stream in OBS: letterbox bars, a style-specific grade, film grain, typewriter narration, a REPLAY / LEGENDARY / BREAKING badge and a running timecode.
-- A **synthesised sting** plays: brass swell, horror cluster, anime riser or heroic burst. It's all generated with Web Audio, so there are no audio files and no copyright risk.
-- The bottom bar credits **"EXECUTIVE PRODUCER: @viewer"**, the person who called it.
-- The overlay exits and goes back to fully transparent. It renders nothing between scenes, so it can sit over gameplay all stream.
+DirectorCut is a live cutscene engine for streams:
 
-It also includes:
-- **Hype auto-trigger:** when chat floods with POG / KEKW / LETSGO, a sportscast scene fires, credited to "CHAT ITSELF".
-- **Streamer controls:** a shared cooldown, a two-scene queue, `!quiet-modes`, and `TRIGGER_ROLE` to limit triggers to subs, VIPs or mods. Viewers who aren't allowed get silence, never a public rebuff.
-- **A control-room console** at `/control`: live program preview, style picker, keyboard triggers, a remaining-time bar, scene history, and a warning if no OBS overlay is connected.
+- Viewers type `!cutscene [style] [what happened]` in Twitch chat — noir, anime, hollywood, baywatch, or sportscast. The optional **viewer pitch** ("one HP clutch with a frying pan") is story material the AI director weaves into the scene: capped at 100 characters, scrubbed of links and @mentions, blocklist-checked, and **never rendered on the overlay** — it shapes the script and shows only in the operator console's scene details and history.
+- An **AI director** (any OpenAI-compatible LLM) writes a cinematic scene as validated JSON — caption, badge, sting, duration — reacting to the actual chat hype.
+- The cutscene renders **live over the stream** (OBS browser source): letterbox bars, film treatment, word-by-word narration, blinking `● REPLAY` badge — and an **"EXECUTIVE PRODUCER: @viewer"** credit for whoever called it. The viewer isn't an audience member; they produced the moment.
+- Chat-hype auto-trigger: when hype in a rolling 30-second window crosses a threshold, the director cuts a scene on its own, credited to **CHAT ITSELF**.
+- A WebAudio-synthesized sting scores every scene — no copyrighted audio, no external assets, nothing to load.
+- Shown working live in Twitch chat in the demo video — a real viewer message from a real account, captured on camera.
 
 ## How we built it
-We built DirectorCut with **OpenAI Codex**, from the director pipeline and rehearsal mode to the broadcast graphics and procedural audio. Post-build polish passes are listed in the README.
 
-- **One Node.js process**, no build step, three dependencies (`tmi.js`, `ws`, `dotenv`). It serves the overlay, console, health endpoint and WebSocket, and connects to Twitch chat.
-- **Twitch chat** via IRC, anonymous read-only or as a bot with replies ("CUTSCENE INITIATED for @viewer…").
-- **AI director:** any OpenAI-compatible endpoint (OpenAI by default, local Ollama supported). The model returns a small JSON script. The server validates it, truncates captions, clamps duration to 5–12 s and **rebuilds the credit from the real trigger**, so the model never decides who gets credited.
-- **Constrained AI, deterministic safety net:** if the model is slow, offline or returns invalid JSON, a hand-written fallback script for that style plays instead. A scene always plays.
-- **Safety by default:**
-  - Chat is treated as untrusted input. Links and @mentions are stripped before chat reaches the model.
-  - Every caption passes a blocklist.
-  - With an OpenAI key, captions are also checked by the moderation endpoint, and anything flagged, slow or erroring falls back to a safe script (fail closed).
-- **Broadcast-grade overlay:** transform/opacity-only animation, a transparent OBS browser source at 1920×1080, reduced-motion support, and late-join recovery: if OBS reloads mid-scene, the overlay resumes the live scene with the correct take number and timecode.
-- **42 network-free tests** (`node:test`) covering JSON extraction, validation, fallbacks, cooldown and hype-window maths, role gating, moderation (including fail-closed), the take counter and late-join replay.
+- The core engine — Twitch IRC integration, the LLM director with a tolerant JSON contract, the WebSocket overlay renderer, the WebAudio synth, the rehearsal simulator — was written by **OpenAI Codex in a single session from a written build brief** (session ID above). Human role: directing. Codex role: engineering.
+- After the Codex build, directed polish passes added output moderation (blocklist + OpenAI moderation, **fail closed**), chat rank gating, a server-side take counter with late-join replay, film-grain tiles, viewer-pitch intake (length cap, scrubbing, blocklist), and a JSON-only trigger API (requests without a JSON content type get a `415`) — all verified by the same network-free test suite.
+- Constraints we set and kept: plain Node.js ESM, three dependencies (`tmi.js`, `ws`, `dotenv`), zero external assets, one process serving overlay + API + WebSocket + chat, secrets only in `.env`.
+- Reliability is the design: model output is validated and clamped (5–12 s), captions filtered, credits always rebuilt server-side from the real trigger, and if the LLM is unreachable a deterministic template director still cuts the scene. **The show must go on.**
 
-## Challenges we ran into
-- **Making AI safe to put on someone else's stream.** Chat can attempt prompt injection, so the model's output had to be bounded, validated, moderated and always recoverable.
-- **OBS compositing.** Browser sources don't handle every CSS blend mode the way Chrome does, so we flattened the look into layers that composite reliably.
-- **Autoplay audio.** OBS allows it, but regular browsers block it. We added an unlock button that appears only inside a scene, so the idle overlay stays empty.
-- **Reloads mid-scene.** OBS reloads browser sources more often than you'd expect, which is why the server replays the active scene with its remaining duration.
+## Challenges
 
-## Accomplishments that we're proud of
-- It goes from `!cutscene` to a full cinematic scene with sound in seconds, and when idle it renders nothing over gameplay.
-- Five distinct broadcast treatments with matching synthesised stings, and zero external assets.
-- It never fails on air: no API key, a dead endpoint or a moderation flag all still produce a scene.
-- Setup takes about 60 seconds: `npm install`, set your channel and key, add one OBS browser source.
+- Making an overlay that renders **zero pixels when idle** yet erupts broadcast-grade mid-scene — inside OBS's restrictive browser-source environment (blend modes, autoplay policy, transparency).
+- Treating chat as untrusted input end-to-end: URL/mention stripping, 100-character pitch caps, JSON tolerance, caption truncation, moderation that fails closed, rate-gated replies.
+- Keeping worst-case latency bounded: the entire director pipeline (LLM + moderation) fits in a fixed timeout budget, with a fallback that never leaves chat without a cutscene.
+
+## Accomplishments
+
+- Five distinct broadcast treatments with procedural stings that look directed, not generated.
+- A provider-pluggable AI director — OpenAI, or any local OpenAI-compatible endpoint — with a contract a judge can read in one file.
+- 49 fast, network-free tests covering the JSON contract, fallback rotation, cooldown/queue boundaries, hype-window math, moderation fail-closed paths, pitch cleaning and blocklist rejection, the JSON-only trigger API, WebSocket role counting, late-join replay, and timeout aborts.
+- A demo that survives us killing the LLM live on camera.
 
 ## What we learned
-LLMs work best on stream as a **constrained creative layer** over deterministic code: small JSON contract, strict validation, server-owned identity, and a fallback for every failure. Design matters as much as the model. If it doesn't look like a real broadcast package, streamers won't put it on their stream.
 
-## What's next for DirectorCut
-- **The director sees the moment:** grab the live frame through OBS WebSocket so captions describe what actually happened.
-- **Real slow-motion replay:** play the last few seconds from the OBS replay buffer under the letterbox.
-- **Channel Points redemptions** via EventSub, with automatic refunds when the queue is full.
-- **Auto-clips:** create a Twitch clip of the moment and post it in chat with the producer's credit.
+Constrained AI beats deterministic code for creative runtime content — but only when the AI's output is treated like any other untrusted input: validated, clamped, filtered, and rehearsed with a fallback. And in OBS-land, "invisible when idle" is a feature you have to engineer as deliberately as the scene itself.
+
+## What's next (roadmap only — none of this is in the submitted code)
+
+Ideas for after the hackathon; **not** implemented, listed so judges can't mistake them for features:
+
+- **Vision director:** the director sees the actual frame via OBS source screenshots and narrates the real moment.
+- **Real slow-mo replays** cut from the OBS replay buffer.
+- **Channel Points redemptions** ("Executive Producer" as a reward) with automatic refunds, and credited Twitch clips.
+- First-class local profile (Ollama default) so the whole thing runs with zero paid APIs.
+
+---
+
+## Video script (target 2:40, hard cap 3:00 — shown running the whole time)
+
+1. **0:00–0:12 Hook.** Overlay fires over gameplay. "Chat just directed a movie trailer about my last play — and the viewer who called it got the executive producer credit."
+2. **0:12–0:22 Problem.** Big moments vanish in the chat scroll, and viewers have no part in the production.
+3. **0:22–1:20 Live demo, real Twitch chat.** At 0:22 a viewer types `!cutscene anime one HP clutch with a frying pan` — voice-over: "the director wrote the scene around that pitch." The scene plays with credit and sting. Then noir and hollywood as plain triggers. Mention cooldown and the graceful "already rolling" queue.
+4. **1:20–1:50 Reliability.** "Chat is untrusted input." Break the LLM endpoint live — a scene still plays. Captions pass a blocklist and moderation, fail closed; duration clamped; credits rebuilt server-side.
+5. **1:50–2:15 Tech.** One Node process, transparent OBS browser source, all audio synthesized, any OpenAI-compatible provider including local Ollama, 49 network-free tests, built with Codex — show `/status` with the session ID for ≥5 s.
+6. **2:15–2:40 Impact and next.** "Next: the director sees the actual frame, real slow-mo replays, Channel Points redemptions." Close on a scene. End card: repo URL + "Built with OpenAI Codex × Twitch".
+
+## Pre-submit checklist
+
+- [x] `npm test` green — 49/49 verified 21:22 GMT on `main` @ `19db8be`
+- [ ] One manual trigger from `/control` with the overlay open in OBS before recording
+- [ ] Recording settings: `HYPE_THRESHOLD=4`, `COOLDOWN_SECONDS=8`, real `LLM_API_KEY`; restore `.env` after. **Pitches need a working LLM key** — with the fallback director, commands still work but pitches are ignored.
+- [ ] Video ≤ 3:00, uploaded **PUBLIC**, plays logged-out
+- [ ] Video shows real Twitch chat + Codex `/status` session ID held ≥5 s
+- [ ] Repo public; fresh clone → `npm install` → `cp .env.example .env` → `npm start` works from README alone
+- [ ] Devpost form: paste text above, repo URL, video URL, session ID, screenshots → **SUBMIT before 22:00 GMT**
+- [ ] Re-open the submission and confirm the video plays logged out
