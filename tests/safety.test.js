@@ -75,3 +75,7 @@ test('non-OpenAI providers and empty keys skip fetch', async () => {
   }
   assert.equal(calls, 0);
 });
+test('built-in list blocks severe slurs as whole words without false positives', () => {
+  const slur = Buffer.from('ZmFnZ290', 'base64').toString('utf8');
+  assert.deepEqual([blocklistHit(`what a ${slur}`), blocklistHit(`${slur.toUpperCase()}!`), blocklistHit('drape the grapes'), blocklistHit('raccoon city'), blocklistHit('kill yourself, chat said', loadBlocklist({}))], [true, true, false, false, true]);
+});

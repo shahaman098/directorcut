@@ -1,6 +1,14 @@
 import { readFileSync } from 'node:fs';
 
-const BUILT_INS = Object.freeze(['fuck', 'fucking', 'fucker', 'motherfucker', 'shit', 'bullshit', 'cunt', 'cocksucker', 'dickhead', 'asshole']);
+// Severe slurs and self-harm phrases, base64-encoded so they aren't plain text in the
+// source. These are what get a Twitch channel actioned; the profanity below is stylistic.
+const SLURS = JSON.parse(Buffer.from('WyJuaWdnZXIiLCJuaWdnYSIsImZhZ2dvdCIsImZhZyIsInJldGFyZCIsInJldGFyZGVkIiwidHJhbm55Iiwia2lrZSIsImNoaW5rIiwic3BpYyIsIndldGJhY2siLCJnb29rIiwiY29vbiIsImt5cyIsImtpbGwgeW91cnNlbGYiLCJraWxsIHVyc2VsZiIsInJhcGUiLCJyYXBlZCIsInJhcGlzdCIsImhlaWwgaGl0bGVyIiwic2llZyBoZWlsIl0=', 'base64').toString('utf8'));
+const BUILT_INS = Object.freeze(['fuck', 'fucking', 'fucker', 'motherfucker', 'shit', 'bullshit', 'cunt', 'cocksucker', 'dickhead', 'asshole', ...SLURS]);
+
+const LINKS = /\b(?:https?:\/\/|www\.)\S+|\b[\w-]+\.(?:com|net|org|tv|gg|io|ly|xyz|link)\b\S*/gi;
+
+/** Strip links and @mentions from untrusted chat before it reaches the model. */
+export const scrub = (text) => String(text).replace(LINKS, '').replace(/@\w+/g, '').replace(/\s{2,}/g, ' ').trim();
 
 export function loadBlocklist(env = {}) {
   let extra = '';

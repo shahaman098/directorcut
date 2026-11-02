@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseScene, validateScene, fallbackScene, createDirector } from '../src/director.js';
+import { parseScene, validateScene, fallbackScene, createDirector, buildPrompt } from '../src/director.js';
 import { STYLES } from '../src/styles.js';
 
 const trigger = { user: 'clip_enjoyer', style: 'noir', source: 'chat' };
@@ -110,4 +110,15 @@ test('a stalled completion is bounded by the director deadline too', async () =>
   });
   assert.deepEqual(await director(trigger), fallbackScene(trigger, 'test', 0));
   assert.equal(signal.aborted, true);
+});
+test('prompt strips links from chat lines and the triggering message', () => {
+  const [system, user] = buildPrompt('test', { ...trigger, message: '!cutscene noir https://evil.example/x www.spam.tv' }, ['raider: go to https://phish.example/login now', 'fan: visit scam.gg/free']);
+  for (const fragment of ['https://', 'www.', 'scam.gg', 'phish.example', 'evil.example']) {
+    assert.equal(system.content.includes(fragment) || user.content.includes(fragment), false, fragment);
+  }
+  assert.equal(JSON.parse(user.content).triggeringMessage, '!cutscene noir');
+});
+test('prompt strips @mentions so the model never echoes viewer handles', () => {
+  const [system, user] = buildPrompt('test', { ...trigger, message: '!cutscene @someone_else' }, ['lurker: @target_user is washed']);
+  assert.deepEqual([system.content.includes('@target_user'), user.content.includes('@someone_else'), system.content.includes('lurker: is washed')], [false, false, true]);
 });
