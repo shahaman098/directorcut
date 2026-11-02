@@ -2,7 +2,11 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const root = $('scene');
-  const debug = new URLSearchParams(location.search).get('debug') === '1';
+  const params = new URLSearchParams(location.search);
+  const debug = params.get('debug') === '1';
+  // The operator console embeds a muted preview; OBS loads the plain URL and stays an "overlay".
+  const preview = params.has('preview');
+  const role = ['overlay', 'preview', 'control'].includes(params.get('role')) ? params.get('role') : (preview ? 'preview' : 'overlay');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const grainTiles = createGrainTiles();
   const labels = { noir: 'A case for the clip archives', anime: 'The awakening of chat', hollywood: 'Every moment has a movie', baywatch: 'Heroes move at half speed', sportscast: 'The play. The legend. The replay.' };
@@ -11,7 +15,10 @@
   let reconnectTimer;
   let timers = [];
   let grainTimer;
+  let timecodeFrame;
   let entranceFrame;
+  let progressAnimation;
+  let sceneStart = 0;
   let sceneVersion = 0;
   let sceneNumber = 0;
   let lastId = '—';
@@ -31,7 +38,10 @@
     timers.forEach(clearTimeout);
     timers = [];
     clearInterval(grainTimer);
+    cancelAnimationFrame(timecodeFrame);
     cancelAnimationFrame(entranceFrame);
+    progressAnimation?.cancel();
+    progressAnimation = null;
     audioCleanup();
     root.hidden = true;
     root.className = '';
@@ -55,6 +65,21 @@
         return `url("${canvas.toDataURL('image/png')}")`;
       });
     } catch { return []; }
+  }
+
+  const pad = (value) => String(value).padStart(2, '0');
+  // A lean rAF loop drives the SMPTE-style timecode (24 fps frames); grain uses pre-built tiles.
+  function animateTimecode() {
+    const timecode = $('timecode');
+    const draw = () => {
+      if (root.hidden) return;
+      const elapsed = Math.max(0, Date.now() - sceneStart);
+      const seconds = Math.floor(elapsed / 1000);
+      const code = `00:${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}:${pad(Math.floor((elapsed % 1000) / 1000 * 24))}`;
+      if (timecode.textContent !== code) timecode.textContent = code;
+      timecodeFrame = requestAnimationFrame(draw);
+    };
+    draw();
   }
 
   function animateGrain() {
@@ -164,10 +189,11 @@
 
   function playSting(sting) {
     currentSting = sting;
+    if (preview) return;
     try {
       const ctx = getAudio();
       if (!ctx) return;
-      if (ctx.state !== 'running') { $('audio-unlock').hidden = false; return; }
+      if (ctx.state !== 'running') { $('audio-unlock').hidden = preview; return; }
       synthesize(sting);
     } catch { /* Visual playback must always continue without audio. */ }
   }
@@ -194,6 +220,7 @@
     $('eyebrow').textContent = labels[scene.style];
     $('caption').textContent = '';
     $('caption').classList.remove('complete');
+    $('caption').classList.toggle('long', Array.from(scene.caption).length > 55);
     $('caption').setAttribute('aria-label', scene.caption);
     $('sub-caption').textContent = scene.subCaption;
     $('credit').textContent = scene.credit;
@@ -206,9 +233,15 @@
     // Two frames give the initial off-screen bar positions a paint before entry.
     entranceFrame = requestAnimationFrame(() => { entranceFrame = requestAnimationFrame(() => {
       if (root.hidden || version !== sceneVersion) return;
+      const duration = Math.min(12000, Math.max(2500, Number(scene.durationMs) || 8000));
+      // Late joiners receive the remaining duration; elapsedMs keeps their timecode honest.
+      sceneStart = Date.now() - Math.max(0, Number(scene.elapsedMs) || 0);
       root.classList.add('active');
       animateGrain();
+      animateTimecode();
       playSting(scene.sting);
+      // Web Animations API so the time-remaining cue still runs under reduced motion (it is informational, not decorative).
+      progressAnimation = $('progress').animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration, easing: 'linear', fill: 'forwards' });
       schedule(() => root.classList.add('styled'), 200);
       const characters = Array.from(scene.caption.slice(0, 90));
       const type = (index) => {
@@ -220,7 +253,6 @@
         if (reducedMotion) { $('caption').textContent = characters.join(''); $('caption').classList.add('complete'); }
         else type(1);
       }, 600);
-      const duration = Math.min(12000, Math.max(2500, Number(scene.durationMs) || 8000));
       schedule(() => root.classList.add('exiting'), duration - 800);
       schedule(hideScene, duration);
     }); });
@@ -228,7 +260,7 @@
 
   function connect() {
     connection = 'connecting'; updateDebug();
-    socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/overlay`);
+    socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/overlay?role=${role}`);
     socket.addEventListener('open', () => { connection = 'live'; retry = 0; updateDebug(); });
     socket.addEventListener('message', (event) => {
       try {

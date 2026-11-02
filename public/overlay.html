@@ -22,6 +22,10 @@
     .bar-content { height: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 4vw; font-size: clamp(9px,.72vw,15px); letter-spacing: .26em; }
     .wordmark { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(14px,1.4vw,28px); letter-spacing: -.055em; font-style: italic; }
     .wordmark b { color: var(--accent); }
+    .top-right { display: flex; align-items: center; gap: 1.6vw; }
+    #timecode { color: #8f8d89; font-variant-numeric: tabular-nums; letter-spacing: .14em; }
+    #timecode::before { content: 'TC'; color: var(--accent); margin-right: .9em; }
+    .progress { position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--accent); transform-origin: left center; transform: scaleX(0); opacity: .85; }
     .top-note { display: flex; align-items: center; gap: 1.2vw; color: #b5b3b0; }
     .top-note::before { content: ''; width: 2vw; height: 1px; background: var(--accent); }
     .frame { inset: 15vh 2.1vw; border-left: 1px solid #ffffff26; border-right: 1px solid #ffffff26; opacity: 0; transition: opacity .5s; }
@@ -37,6 +41,8 @@
     .eyebrow { color: var(--accent); font-size: clamp(9px,.75vw,16px); letter-spacing: .38em; text-transform: uppercase; margin-bottom: 2.4vh; }
     .eyebrow::before, .eyebrow::after { content: '—'; padding: 0 1.5em; }
     h1 { font: 400 clamp(28px,7vw,136px)/1.02 Georgia, 'Times New Roman', serif; letter-spacing: -.045em; text-shadow: 0 4px 3px #0009, 0 8px 50px #000d; margin: 0; overflow-wrap: anywhere; text-wrap: balance; }
+    h1.long { font-size: clamp(24px,5.2vw,100px); }
+    .sportscast h1.long { font-size: clamp(22px,4.3vw,84px); }
     #caption::after { content: ''; display: inline-block; width: .035em; height: .7em; margin-left: .08em; background: var(--accent); animation: blink .6s step-end infinite; }
     #caption.complete::after { display: none; }
     #sub-caption { color: var(--muted); font: 500 clamp(12px,2.2vw,43px)/1.4 system-ui, sans-serif; letter-spacing: .15em; text-transform: uppercase; margin: 2.8vh 0 0; opacity: 0; transition: opacity .7s 1.8s; text-shadow: 0 2px 12px #000; }
@@ -48,13 +54,13 @@
     .scoreboard { display: none; position: absolute; right: 5vw; top: 16.5vh; z-index: 4; background: #071b3b; border-top: 3px solid #46c9ff; padding: .7em 1.2em; font: 900 clamp(10px,1vw,22px) 'Arial Black', Impact, sans-serif; letter-spacing: .08em; }
     .scoreboard small { display: block; color: #78d8ff; font: 600 .55em system-ui; letter-spacing: .18em; margin-top: .5em; }
     #audio-unlock, #debug { position: absolute; z-index: 12; font: 11px system-ui; background: #111d; border: 1px solid #ffffff35; border-radius: 3px; color: #eee; padding: 7px 10px; }
-    #audio-unlock { bottom: 13vh; left: 12px; pointer-events: auto; cursor: pointer; transition: opacity .3s; }
+    #audio-unlock { bottom: 13.5vh; left: 4vw; pointer-events: auto; cursor: pointer; transition: opacity .3s; font-size: 13px; padding: 9px 14px; background: #0d0e10ee; border-color: #e8bf7580; }
     #audio-unlock.fading { opacity: 0; }
     #audio-unlock:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-    #debug { right: 12px; bottom: 13vh; color: #bfffc5; }
+    #debug { right: 4vw; bottom: 13.5vh; color: #bfffc5; }
     #scene.active .bar { transform: translateY(0); }
     #scene.active .vignette, #scene.active .frame { opacity: 1; }
-    #scene.active #grain { opacity: .08; }
+    #scene.active #grain { opacity: .07; }
     #scene.styled .tint, #scene.styled .light { opacity: 1; }
     #scene.active .badge-row, #scene.active .caption-block, #scene.active .credit { opacity: 1; transform: translateY(0); }
     #scene.active #sub-caption { opacity: 1; }
@@ -95,7 +101,7 @@
     @keyframes flash { from { opacity: .85; } to { opacity: 0; } }
     @keyframes rotate-lines { from { transform: rotate(0deg); } to { transform: rotate(24deg); } }
     @keyframes chip-in { from { opacity: 0; transform: translateX(15px); } to { opacity: 1; transform: translateX(0); } }
-    @media (max-width: 600px) { .top-note { display: none; } .credit { letter-spacing: .04em; } .credit::before, .credit::after { padding: 0 .4em; } .take { max-width: 20vw; } .badge-row { gap: 3vw; } }
+    @media (max-width: 600px) { .top-note, #timecode { display: none; } .credit { letter-spacing: .04em; } .credit::before, .credit::after { padding: 0 .4em; } .take { max-width: 20vw; } .badge-row { gap: 3vw; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0s !important; } .flash { display: none; } }
   </style>
 </head>
@@ -110,18 +116,19 @@
     </svg>
     <div id="grain" class="layer" aria-hidden="true"></div>
     <div class="frame" aria-hidden="true"></div>
-    <div class="bar top"><div class="bar-content"><span class="wordmark">DirectorCut<b>.</b></span><span class="top-note">A CHAT ORIGINAL PICTURE</span><span id="channel">LIVE CINEMA</span></div></div>
+    <div class="bar top"><div class="bar-content"><span class="wordmark">DirectorCut<b>.</b></span><span class="top-note">A CHAT ORIGINAL PICTURE</span><span class="top-right"><span id="channel">LIVE CINEMA</span><span id="timecode" aria-hidden="true">00:00:00:00</span></span></div></div>
     <div class="badge-row"><span class="badge"><i class="red-dot" aria-hidden="true"></i><span id="badge">REPLAY</span></span><span class="style-label" id="style-label">NOIR / DIR. AI</span></div>
     <div class="scoreboard">CHAT <span aria-hidden="true">//</span> <span id="score-take">01</span><small>INSTANT CLASSIC · LIVE</small></div>
     <section class="caption-block"><div class="eyebrow" id="eyebrow">Every moment has a movie</div><h1 id="caption"></h1><p id="sub-caption"></p></section>
-    <div class="bar bottom"><div class="bar-content"><span class="take">ORIGINAL MOMENT<br><strong id="take">TAKE 001 / LIVE</strong></span><span class="credit" id="credit"></span></div></div>
+    <div class="bar bottom"><i class="progress" id="progress" aria-hidden="true"></i><div class="bar-content"><span class="take">ORIGINAL MOMENT<br><strong id="take">TAKE 001 / LIVE</strong></span><span class="credit" id="credit"></span></div></div>
     <div class="flash" aria-hidden="true"></div>
-    <button id="audio-unlock" type="button" hidden>🔊 enable sting</button>
+    <button id="audio-unlock" type="button" hidden>🔊 Click to enable sound</button>
     <output id="debug" hidden></output>
   </main>
   <script>
     // Rehearsal backdrop: ?backdrop=1 paints a stand-in "gameplay" layer so the
     // overlay can be previewed in a plain browser (OBS composites over real gameplay).
+    // ?preview=1 (used by the operator console) mutes the sting.
     if (new URLSearchParams(location.search).has('backdrop')) {
       document.write('<style>body::after{content:\'\';position:fixed;inset:0;z-index:-1;background:linear-gradient(135deg,#123a6b,#7a1f4c,#c96f1f) center/cover}</style>');
     }

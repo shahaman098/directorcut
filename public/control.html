@@ -3,123 +3,412 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
   <title>DirectorCut · Operator console</title>
   <style>
-    :root { color-scheme: dark; --gold: #e8bf75; --muted: #97999e; }
+    :root {
+      color-scheme: dark;
+      --bg: #0b0c0e; --panel: #121316; --panel-2: #17181c; --line: #ffffff1a; --line-strong: #ffffff30;
+      --ink: #f3eee5; --soft: #cfcac0; --muted: #8f9197; --gold: #e8bf75; --ok: #9cd9ae; --bad: #e0806f; --warn: #f0c36a;
+      --serif: Georgia, 'Times New Roman', serif; --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: #0d0e10; color: #f3eee5; font: 14px/1.6 system-ui, sans-serif; }
-    body::before { content: ''; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 80% 0, #ba8b3d0e, transparent 60%); }
-    main { position: relative; max-width: 1000px; margin: auto; padding: 6vh 6vw 4vh; }
-    header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 28px; border-bottom: 1px solid #ffffff20; }
-    .wordmark { font: italic 30px Georgia, 'Times New Roman', serif; letter-spacing: -.06em; }
+    [hidden] { display: none !important; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font: 14px/1.55 system-ui, sans-serif; }
+    body::before { content: ''; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 90% -10%, #ba8b3d1c, transparent 55%); }
+    a { color: var(--soft); text-underline-offset: 4px; }
+    a:hover { color: var(--ink); }
+    :focus-visible { outline: 2px solid #fff3cd; outline-offset: 3px; }
+    .shell { position: relative; max-width: 1280px; margin: 0 auto; padding: 22px clamp(16px, 3vw, 36px) 40px; }
+
+    /* Header */
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: baseline; gap: 14px; margin-right: auto; min-width: 0; }
+    .wordmark { font: italic 28px/1 var(--serif); letter-spacing: -.06em; color: var(--ink); text-decoration: none; }
     .wordmark span { color: var(--gold); }
-    .status { display: flex; align-items: center; gap: 9px; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
-    #dot { width: 7px; height: 7px; border-radius: 50%; background: #d77868; }
-    #dot.connected { background: #9cd9ae; box-shadow: 0 0 14px #9cd9ae40; }
-    .kicker { color: var(--gold); letter-spacing: .22em; font-size: 10px; margin: 55px 0 18px; text-transform: uppercase; }
-    h1 { font: 400 clamp(46px,7vw,76px)/1.05 Georgia, 'Times New Roman', serif; letter-spacing: -.05em; margin: 0; max-width: 640px; }
-    h1 em { color: var(--gold); }
-    .intro { color: var(--muted); max-width: 490px; margin: 22px 0 35px; }
-    .stats { display: grid; grid-template-columns: 1fr 1.3fr .7fr; border-top: 1px solid #ffffff20; border-bottom: 1px solid #ffffff20; padding: 23px 0; gap: 20px; }
-    .stat-label { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .18em; }
-    .stat-value { display: block; margin-top: 8px; font-size: 15px; overflow-wrap: anywhere; }
-    form { margin-top: 36px; }
-    .form-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    label, .reel { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; }
-    .reel { color: var(--muted); }
-    select { width: 100%; border: 1px solid #ffffff30; border-radius: 2px; background: #17181b; padding: 15px; color: #eee8db; font: 15px system-ui; cursor: pointer; }
-    #style-note { color: var(--muted); min-height: 23px; font-size: 12px; margin: 10px 0 22px; }
-    button { width: 100%; border: 1px solid var(--gold); border-radius: 2px; background: var(--gold); color: #16130d; font: 800 clamp(12px,2vw,16px) system-ui; letter-spacing: .1em; padding: 23px 10px; cursor: pointer; transition: opacity .2s, transform .2s; }
-    button:hover:enabled { transform: translateY(-2px); }
-    button:disabled { cursor: default; opacity: .45; }
-    :focus-visible { outline: 2px solid #fff3cd; outline-offset: 4px; }
-    #feedback { min-height: 26px; color: var(--gold); font-size: 12px; margin: 12px 0 25px; }
-    footer { border-top: 1px solid #ffffff20; padding-top: 22px; display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 11px; }
-    a { color: #e0d4bc; text-underline-offset: 4px; }
-    .obs { margin-top: 28px; color: var(--muted); font-size: 11px; }
-    code { color: #ccc6bc; }
-    @media (max-width: 520px) { .stats { grid-template-columns: 1fr; gap: 15px; } .stat-value { margin-top: 2px; } footer { flex-direction: column; } .kicker { margin-top: 35px; } }
-    @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+    .tagline { color: var(--muted); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; white-space: nowrap; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { display: inline-flex; align-items: baseline; gap: 8px; border: 1px solid var(--line); border-radius: 99px; padding: 5px 12px; font-size: 12px; white-space: nowrap; max-width: 100%; }
+    .chip small { color: var(--muted); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; }
+    .chip strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; border-radius: 99px; padding: 5px 12px 5px 10px; font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; background: #e0806f1a; color: var(--bad); border: 1px solid #e0806f40; }
+    .pill i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .pill.live { background: #9cd9ae14; color: var(--ok); border-color: #9cd9ae40; }
+    .pill.live i { box-shadow: 0 0 0 3px #9cd9ae2a; }
+    .pill.rolling { background: #e8bf751a; color: var(--gold); border-color: #e8bf7550; }
+    .pill.rolling i { animation: pulse 1s ease-in-out infinite; }
+
+    /* Warning banner */
+    .banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 18px; padding: 12px 16px; border: 1px solid #f0c36a55; border-left: 3px solid var(--warn); background: #f0c36a10; border-radius: 3px; color: #f5dfae; }
+    .banner strong { color: var(--warn); }
+    .banner .grow { flex: 1 1 260px; }
+
+    /* Layout */
+    .desk { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 28px; margin-top: 24px; align-items: start; }
+    section { min-width: 0; }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+    .section-head h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--soft); }
+    .section-head h2 b { color: var(--gold); font-weight: 600; margin-right: 8px; }
+    .hint { color: var(--muted); font-size: 11px; }
+    kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 4px; color: var(--soft); background: #ffffff08; }
+
+    /* Style cards */
+    fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+    .styles { display: grid; gap: 8px; }
+    .style-card { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 4px 14px; padding: 12px 14px 12px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; transition: border-color .15s, background .15s; }
+    .style-card:hover { border-color: var(--line-strong); background: var(--panel-2); }
+    .style-card input { position: absolute; opacity: 0; pointer-events: none; }
+    .style-card .swatch { grid-row: span 2; width: 34px; height: 34px; border-radius: 3px; display: grid; place-items: center; font: 700 12px var(--mono); color: #0b0c0e; background: var(--c); box-shadow: inset 0 0 0 1px #0003; }
+    .style-card .name { font-weight: 700; letter-spacing: .12em; font-size: 13px; }
+    .style-card .desc { grid-column: 2 / 4; color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+    .style-card .badge { font: 800 9.5px system-ui; letter-spacing: .14em; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 2px; padding: 2px 6px; }
+    .style-card:has(input:checked) { border-color: var(--c); background: linear-gradient(90deg, color-mix(in srgb, var(--c) 12%, transparent), transparent 70%), var(--panel); }
+    .style-card:has(input:checked) .badge { color: var(--c); border-color: color-mix(in srgb, var(--c) 55%, transparent); }
+    .style-card:has(input:focus-visible) { outline: 2px solid #fff3cd; outline-offset: 2px; }
+
+    /* Trigger */
+    .roll { margin-top: 22px; }
+    #trigger { position: relative; overflow: hidden; width: 100%; border: 1px solid var(--gold); border-radius: 4px; background: var(--gold); color: #16130d; font: 800 15px system-ui; letter-spacing: .12em; padding: 20px 12px; cursor: pointer; transition: transform .15s, opacity .2s; }
+    #trigger:hover:enabled { transform: translateY(-1px); }
+    #trigger:active:enabled { transform: translateY(1px); }
+    #trigger:disabled { cursor: default; background: #2a2620; color: #e8d8b6; border-color: #e8bf7555; }
+    #trigger .fill { position: absolute; inset: 0; background: #e8bf7533; transform-origin: left center; transform: scaleX(0); pointer-events: none; }
+    #trigger .label { position: relative; }
+    #feedback { min-height: 22px; color: var(--gold); font-size: 13px; margin: 12px 0 0; }
+    #feedback.error { color: var(--bad); }
+    .shortcuts { margin-top: 8px; }
+
+    /* Monitor */
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+    .monitor-links { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+    .tag { font-size: 9.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 2px; padding: 2px 6px; }
+    .screen { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 4px; background: #050506; border: 1px solid var(--line); }
+    .screen iframe { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }
+    .slate { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 6px; background: #05050699; transition: opacity .3s; }
+    .slate b { font: italic 400 clamp(22px, 3vw, 34px)/1 var(--serif); letter-spacing: -.03em; }
+    .slate span { color: var(--soft); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
+    .screen.rolling .slate { opacity: 0; }
+
+    .now { margin-top: 14px; padding: 16px 18px; }
+    .now-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .now-head .label { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+    .style-tag { display: inline-flex; align-items: center; gap: 6px; font: 700 10px system-ui; letter-spacing: .14em; color: var(--c, var(--muted)); }
+    .style-tag::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--c, var(--muted)); }
+    #now-caption { font: 400 clamp(19px, 2vw, 24px)/1.25 var(--serif); letter-spacing: -.02em; margin: 10px 0 4px; overflow-wrap: anywhere; }
+    #now-sub { color: var(--soft); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; margin: 0; }
+    #now-credit { color: var(--gold); font-size: 12px; font-weight: 600; letter-spacing: .1em; margin: 10px 0 0; }
+    .meter { display: flex; align-items: center; gap: 10px; margin-top: 14px; font: 12px var(--mono); color: var(--muted); }
+    .meter .track { flex: 1; height: 3px; background: #ffffff14; border-radius: 2px; overflow: hidden; }
+    .meter .bar { display: block; height: 100%; background: var(--c, var(--gold)); transform-origin: left center; transform: scaleX(0); }
+    .now.idle #now-caption { color: var(--muted); font-style: italic; }
+
+    .log { margin-top: 14px; }
+    .log ol { list-style: none; margin: 0; padding: 0; }
+    .log li { display: grid; grid-template-columns: 52px 72px minmax(0, 1fr); gap: 4px 12px; padding: 11px 16px; border-top: 1px solid var(--line); font-size: 12.5px; align-items: baseline; }
+    .log li:first-child { border-top: 0; }
+    .log .take { font: 12px var(--mono); color: var(--soft); }
+    .log time { font: 12px var(--mono); color: var(--muted); }
+    .log .text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .log .meta { grid-column: 3; color: var(--muted); font-size: 11.5px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .log li.dropped .text { color: var(--bad); }
+    .log .empty { display: block; padding: 18px 16px; color: var(--muted); font-size: 12.5px; }
+    .log-head { padding: 12px 16px; border-bottom: 1px solid var(--line); margin: 0; }
+
+    /* OBS footer */
+    footer { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; color: var(--muted); font-size: 12px; }
+    .url { display: inline-flex; align-items: center; gap: 0; border: 1px solid var(--line-strong); border-radius: 3px; overflow: hidden; max-width: 100%; }
+    .url code { padding: 5px 10px; font: 12px var(--mono); color: var(--ink); background: #ffffff08; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: all; }
+    .url button { border: 0; border-left: 1px solid var(--line-strong); background: transparent; color: var(--soft); font: 600 11px system-ui; letter-spacing: .08em; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+    .url button:hover { color: var(--ink); background: #ffffff10; }
+
+    @media (hover: none) { .kbd-hint { display: none; } }
+    @keyframes pulse { 50% { opacity: .35; } }
+    @media (max-width: 900px) { .desk { grid-template-columns: 1fr; } }
+    @media (max-width: 520px) {
+      .tagline { display: none; }
+      .style-card { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 2px 12px; }
+      .style-card .swatch { width: 30px; height: 30px; }
+      .log li { grid-template-columns: 44px minmax(0, 1fr); }
+      .log time { display: none; }
+      .log .text, .log .meta { grid-column: 2; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
   </style>
 </head>
 <body>
-  <main>
-    <header><a class="wordmark" href="/" style="text-decoration:none">DirectorCut<span>.</span></a><span class="status"><i id="dot" aria-hidden="true"></i><span id="connection">Connecting</span></span></header>
-    <p class="kicker">Production desk / Operator 01</p>
-    <h1>Chat calls it.<br>You make it <em>cinema.</em></h1>
-    <p class="intro">Set the scene. Roll the sting. Give your next big moment the opening credits it deserves.</p>
-    <div class="stats" aria-label="Live server status">
-      <div><span class="stat-label">Channel</span><strong class="stat-value" id="channel">—</strong></div>
-      <div><span class="stat-label">AI director</span><strong class="stat-value" id="model">—</strong></div>
-      <div><span class="stat-label">Scenes served</span><strong class="stat-value" id="served">000</strong></div>
+  <div class="shell">
+    <header>
+      <div class="brand"><a class="wordmark" href="/">DirectorCut<span>.</span></a><span class="tagline">Production desk</span></div>
+      <div class="chips" aria-label="Live server status">
+        <span class="chip"><small>Channel</small><strong id="channel">—</strong></span>
+        <span class="chip"><small>Director</small><strong id="model">—</strong></span>
+        <span class="chip"><small>Served</small><strong id="served">000</strong></span>
+        <span class="chip"><small>Overlays</small><strong id="clients">0</strong></span>
+      </div>
+      <span class="pill" id="pill" role="status"><i aria-hidden="true"></i><span id="connection">Connecting</span></span>
+    </header>
+
+    <div class="banner" id="no-overlay" role="alert" hidden>
+      <span class="grow"><strong>No overlay connected.</strong> Scenes will play to nobody. Add the OBS browser source, or open the overlay in a tab.</span>
+      <span class="url"><code class="obs-url"></code><button type="button" class="copy">Copy URL</button></span>
+      <a href="/overlay" target="_blank" rel="noopener">Open overlay ↗</a>
     </div>
-    <form id="trigger-form">
-      <div class="form-head"><label for="style">Choose your treatment</label><span class="reel">5 lenses / 1 moment</span></div>
-      <select id="style" aria-describedby="style-note">
-        <option value="noir">01 / NOIR — The plot thickens</option>
-        <option value="anime">02 / ANIME — Enter the final form</option>
-        <option value="hollywood">03 / HOLLYWOOD — Cue the blockbuster</option>
-        <option value="baywatch">04 / BAYWATCH — Save it in slow motion</option>
-        <option value="sportscast">05 / SPORTSCAST — An instant classic</option>
-      </select>
-      <p id="style-note">Monochrome mystery. Every missed shot has a motive.</p>
-      <button id="trigger" type="submit" disabled>🎬 TRIGGER TEST CUTSCENE</button>
-      <p id="feedback" role="status" aria-live="polite">Waiting for the production desk…</p>
-    </form>
-    <footer><a href="/overlay" target="_blank" rel="noopener">Open clean overlay ↗</a><span id="clients">0 overlay connections</span><span>EXECUTIVE PRODUCED BY CHAT</span></footer>
-    <p class="obs">OBS browser source · <code id="overlay-url"></code> · 1920 × 1080<br>Enable “Control audio via OBS” to mix the synthesized sting.</p>
-  </main>
+
+    <div class="desk">
+      <section aria-labelledby="treatment-title">
+        <form id="trigger-form">
+          <div class="section-head"><h2 id="treatment-title"><b>01</b>Choose the treatment</h2><span class="hint kbd-hint">Keys <kbd>1</kbd>–<kbd>5</kbd></span></div>
+          <fieldset aria-labelledby="treatment-title">
+            <div class="styles" id="styles">
+              <label class="style-card" style="--c:#ddd8c6"><input type="radio" name="style" value="noir" checked><span class="swatch">1</span><span class="name">NOIR</span><span class="badge">REPLAY</span><span class="desc">Monochrome mystery. Every missed shot has a motive.</span></label>
+              <label class="style-card" style="--c:#73fff7"><input type="radio" name="style" value="anime"><span class="swatch">2</span><span class="name">ANIME</span><span class="badge">LEGENDARY</span><span class="desc">Magenta speedlines. Chat enters its final form.</span></label>
+              <label class="style-card" style="--c:#e8bf75"><input type="radio" name="style" value="hollywood"><span class="swatch">3</span><span class="name">HOLLYWOOD</span><span class="badge">LEGENDARY</span><span class="desc">Golden light. Blockbuster stakes, questionable decisions.</span></label>
+              <label class="style-card" style="--c:#ffc18c"><input type="radio" name="style" value="baywatch"><span class="swatch">4</span><span class="name">BAYWATCH</span><span class="badge">SLOW-MO</span><span class="desc">Sunset orange. A heroic rescue of the entire vibe.</span></label>
+              <label class="style-card" style="--c:#62d4ff"><input type="radio" name="style" value="sportscast"><span class="swatch">5</span><span class="name">SPORTSCAST</span><span class="badge">BREAKING</span><span class="desc">Electric blue. Instant analysis of an instant classic.</span></label>
+            </div>
+          </fieldset>
+          <div class="roll">
+            <div class="section-head"><h2><b>02</b>Roll the take</h2></div>
+            <button id="trigger" type="submit" disabled><span class="fill" id="cooldown-fill"></span><span class="label" id="trigger-label">🎬 TRIGGER TEST CUTSCENE</span></button>
+            <p id="feedback" role="status" aria-live="polite">Waiting for the production desk…</p>
+            <p class="hint shortcuts"><span class="kbd-hint">Press <kbd>Enter</kbd> to roll. </span>Chat can call it any time with <code>!cutscene [style]</code>.</p>
+          </div>
+        </form>
+      </section>
+
+      <section aria-labelledby="monitor-title">
+        <div class="section-head"><h2 id="monitor-title"><b>03</b>Monitor</h2><span class="monitor-links"><span class="tag">Preview muted</span><a href="/overlay?backdrop=1" target="_blank" rel="noopener">Full overlay ↗</a></span></div>
+        <div class="screen" id="screen">
+          <iframe id="preview" src="/overlay?backdrop=1&amp;preview=1&amp;role=preview" title="Muted overlay preview" tabindex="-1" aria-hidden="true"></iframe>
+          <div class="slate"><b>Standing by</b><span id="slate-note">Overlay clear · zero pixels on stream</span></div>
+        </div>
+        <div class="panel now idle" id="now" aria-live="polite">
+          <div class="now-head"><span class="label">Now rolling</span><span class="style-tag" id="now-style">IDLE</span></div>
+          <p id="now-caption">Nothing on screen. The next take is yours.</p>
+          <p id="now-sub" hidden></p>
+          <p id="now-credit" hidden></p>
+          <div class="meter" id="now-meter" hidden><span class="track"><span class="bar" id="now-bar"></span></span><span id="now-remaining">0.0s</span></div>
+        </div>
+        <div class="panel log">
+          <div class="section-head log-head"><h2>Recent takes</h2><span class="hint" id="log-count">0 this session</span></div>
+          <ol id="log"><li class="empty">No takes yet. Roll one, or wait for chat.</li></ol>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <span>OBS browser source</span>
+      <span class="url"><code class="obs-url"></code><button type="button" class="copy">Copy URL</button></span>
+      <span>1920 × 1080 · transparent · enable “Control audio via OBS” for the sting</span>
+    </footer>
+  </div>
   <script>
     (() => {
+      'use strict';
       const $ = (id) => document.getElementById(id);
-      const notes = { noir: 'Monochrome mystery. Every missed shot has a motive.', anime: 'Magenta speedlines. Chat enters its final form.', hollywood: 'Golden light. Blockbuster stakes, questionable decisions.', baywatch: 'Sunset orange. A heroic rescue of the entire vibe.', sportscast: 'Electric blue. Instant analysis of an instant classic.' };
-      let online = false;
-      let sending = false;
-      let readyAt = 0;
-      $('overlay-url').textContent = `${location.origin}/overlay`;
-      $('style').addEventListener('change', () => { $('style-note').textContent = notes[$('style').value]; });
-      function updateButton() {
-        const remaining = Math.max(0, Math.ceil((readyAt - Date.now()) / 1000));
-        $('trigger').disabled = !online || sending || remaining > 0;
-        $('trigger').textContent = sending ? 'CALLING THE DIRECTOR…' : remaining > 0 ? `NEXT TAKE IN ${remaining}s` : '🎬 TRIGGER TEST CUTSCENE';
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Presentation-only accents; mirrors the per-style --accent values in overlay.html.
+      const ACCENTS = { noir: '#ddd8c6', anime: '#73fff7', hollywood: '#e8bf75', baywatch: '#ffc18c', sportscast: '#62d4ff' };
+      const overlayUrl = `${location.origin}/overlay`;
+      const state = { online: false, sending: false, readyAt: 0, cooldownTotal: 0, overlays: null, scene: null, sceneEnds: 0, sceneTotal: 0, takes: [], seen: new Set(), take: 0 };
+      let socket;
+      let retry = 0;
+
+      document.querySelectorAll('.obs-url').forEach((node) => { node.textContent = overlayUrl; });
+      document.querySelectorAll('.copy').forEach((button) => button.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(overlayUrl); button.textContent = 'Copied ✓'; }
+        catch {
+          const range = document.createRange();
+          range.selectNodeContents(button.previousElementSibling);
+          getSelection().removeAllRanges(); getSelection().addRange(range);
+          button.textContent = 'Press Ctrl+C';
+        }
+        setTimeout(() => { button.textContent = 'Copy URL'; }, 1800);
+      }));
+
+      const selectedStyle = () => document.querySelector('input[name="style"]:checked')?.value || 'noir';
+      const radios = () => Array.from(document.querySelectorAll('input[name="style"]'));
+      const feedback = (text, error = false) => { $('feedback').textContent = text; $('feedback').classList.toggle('error', error); };
+
+      // Server-provided copy keeps the console in sync with src/styles.js; the static cards are the offline fallback.
+      function renderStyles(styles) {
+        if (!Array.isArray(styles) || !styles.length) return;
+        const current = selectedStyle();
+        const container = $('styles');
+        container.replaceChildren(...styles.map((style, index) => {
+          const label = document.createElement('label');
+          label.className = 'style-card';
+          label.style.setProperty('--c', ACCENTS[style.key] || '#e8bf75');
+          const input = Object.assign(document.createElement('input'), { type: 'radio', name: 'style', value: style.key, checked: style.key === current });
+          const part = (className, text) => Object.assign(document.createElement('span'), { className, textContent: text });
+          label.append(input, part('swatch', String(index + 1)), part('name', style.label), part('badge', style.badge), part('desc', style.description));
+          return label;
+        }));
+        if (!document.querySelector('input[name="style"]:checked')) radios()[0].checked = true;
       }
+
+      // Runs every frame, so only touch the DOM when a value actually changes.
+      const put = (node, key, value) => { if (node[key] !== value) node[key] = value; };
+      function updateButton() {
+        const left = Math.max(0, state.readyAt - Date.now());
+        const remaining = Math.ceil(left / 1000);
+        put($('trigger'), 'disabled', !state.online || state.sending || remaining > 0);
+        put($('trigger-label'), 'textContent', !state.online ? 'DESK OFFLINE' : state.sending ? 'CALLING THE DIRECTOR…' : remaining > 0 ? `NEXT TAKE IN ${remaining}s` : '🎬 TRIGGER TEST CUTSCENE');
+        $('cooldown-fill').style.transform = `scaleX(${state.cooldownTotal && left ? left / state.cooldownTotal : 0})`;
+        if (state.scene) {
+          const sceneLeft = Math.max(0, state.sceneEnds - Date.now());
+          $('now-bar').style.transform = `scaleX(${state.sceneTotal ? 1 - sceneLeft / state.sceneTotal : 1})`;
+          put($('now-remaining'), 'textContent', `${(sceneLeft / 1000).toFixed(1)}s`);
+        }
+      }
+
+      function renderStatus() {
+        const rolling = Boolean(state.scene);
+        $('pill').className = `pill${state.online ? (rolling ? ' rolling' : ' live') : ''}`;
+        $('connection').textContent = !state.online ? 'Offline' : rolling ? 'On air' : 'Standing by';
+        $('screen').classList.toggle('rolling', rolling);
+        $('no-overlay').hidden = !state.online || state.overlays !== 0;
+      }
+
+      function setNow(scene) {
+        state.scene = scene;
+        const now = $('now');
+        now.classList.toggle('idle', !scene);
+        $('now-sub').hidden = !scene; $('now-credit').hidden = !scene; $('now-meter').hidden = !scene;
+        if (scene) {
+          now.style.setProperty('--c', ACCENTS[scene.style] || '#e8bf75');
+          $('now-style').textContent = String(scene.style).toUpperCase();
+          $('now-caption').textContent = scene.caption;
+          $('now-sub').textContent = scene.subCaption;
+          $('now-credit').textContent = scene.credit;
+          state.sceneTotal = (Number(scene.durationMs) || 8000) + (Number(scene.elapsedMs) || 0);
+          state.sceneEnds = Date.now() + (Number(scene.durationMs) || 8000);
+        } else {
+          now.style.removeProperty('--c');
+          $('now-style').textContent = 'IDLE';
+          $('now-caption').textContent = 'Nothing on screen. The next take is yours.';
+        }
+        renderStatus();
+        updateButton();
+      }
+
+      const clock = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      function addTake(entry) {
+        state.takes.unshift(entry);
+        state.takes.length = Math.min(state.takes.length, 8);
+        const items = state.takes.map((take) => {
+          const li = document.createElement('li');
+          if (take.dropped) li.className = 'dropped';
+          const span = (className, text, tag = 'span') => Object.assign(document.createElement(tag), { className, textContent: text });
+          const meta = span('meta', '');
+          if (take.style) {
+            const tag = span('style-tag', take.style.toUpperCase());
+            tag.style.setProperty('--c', ACCENTS[take.style] || '#e8bf75');
+            meta.append(tag);
+          }
+          if (take.credit) meta.append(span('', take.credit.replace('EXECUTIVE PRODUCER: ', 'prod. ')));
+          const text = span('text', take.text);
+          text.title = take.text;
+          li.append(span('take', take.number), span('', take.time, 'time'), text);
+          if (meta.childNodes.length) li.append(meta);
+          return li;
+        });
+        $('log').replaceChildren(...items);
+        $('log-count').textContent = `${state.take} this session`;
+      }
+
+      function connect() {
+        socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/overlay?role=control`);
+        socket.addEventListener('open', () => { retry = 0; });
+        socket.addEventListener('message', (event) => {
+          let payload;
+          try { payload = JSON.parse(event.data); } catch { return; }
+          if (payload.type === 'hello') renderStyles(payload.styles);
+          if (payload.type === 'cutscene' && payload.scene) {
+            setNow(payload.scene);
+            if (!state.seen.has(payload.id)) {
+              state.seen.add(payload.id);
+              state.take += 1;
+              addTake({ number: `#${String(state.take).padStart(3, '0')}`, time: clock(), text: payload.scene.caption, style: payload.scene.style, credit: payload.scene.credit });
+            }
+          }
+          if (payload.type === 'idle') setNow(null);
+          if (payload.type === 'dropped') addTake({ number: '—', time: clock(), text: 'Request dropped: two scenes already waiting.', dropped: true });
+        });
+        socket.addEventListener('error', () => socket.close());
+        socket.addEventListener('close', () => { setTimeout(connect, Math.min(5000, 300 * 2 ** retry++)); });
+      }
+
       async function poll() {
         try {
           const response = await fetch('/healthz', { cache: 'no-store', signal: AbortSignal.timeout(3000) });
           if (!response.ok) throw new Error();
           const health = await response.json();
-          const wasOffline = !online;
-          online = Boolean(health.ok);
+          const wasOffline = !state.online;
+          state.online = Boolean(health.ok);
+          state.overlays = Number(health.wsClients) || 0;
           $('channel').textContent = `#${health.channel}`;
+          $('channel').title = `#${health.channel}`;
           $('model').textContent = health.model;
+          $('model').title = health.model;
           $('served').textContent = String(health.cutscenesServed).padStart(3, '0');
-          $('clients').textContent = `${health.wsClients} overlay connection${health.wsClients === 1 ? '' : 's'}`;
-          if (wasOffline && !sending) $('feedback').textContent = 'Standing by. Your next take is ready.';
-        } catch { online = false; $('feedback').textContent = 'Connection lost. Reconnecting to the production desk…'; }
-        $('dot').classList.toggle('connected', online);
-        $('connection').textContent = online ? 'Production live' : 'Offline';
+          $('clients').textContent = String(state.overlays);
+          if (!health.rolling && state.scene && Date.now() > state.sceneEnds) setNow(null);
+          if (wasOffline && !state.sending) feedback('Standing by. Your next take is ready.');
+        } catch {
+          state.online = false;
+          feedback('Connection lost. Reconnecting to the production desk…', true);
+        }
+        renderStatus();
         updateButton();
       }
+
       $('trigger-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         if ($('trigger').disabled) return;
-        sending = true; updateButton();
+        state.sending = true; updateButton();
+        const style = selectedStyle();
         try {
-          const response = await fetch('/api/trigger', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ style: $('style').value, user: 'operator' }), signal: AbortSignal.timeout(5000) });
+          const response = await fetch('/api/trigger', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ style, user: 'operator' }), signal: AbortSignal.timeout(5000) });
           const result = await response.json();
           if (response.status === 202) {
-            readyAt = Date.now() + result.cooldownMs;
-            $('feedback').textContent = 'Cutscene called. The director is writing — watch the overlay.';
+            state.cooldownTotal = result.cooldownMs; state.readyAt = Date.now() + result.cooldownMs;
+            feedback(`${style.toUpperCase()} take called. The director is writing — watch the monitor.`);
           } else if (response.status === 429) {
-            readyAt = Date.now() + result.retryAfterMs;
-            $('feedback').textContent = result.reason === 'queue-full' ? 'Two scenes are waiting. Let the current take finish.' : 'The next take is cooling down. Stand by.';
+            state.cooldownTotal = result.retryAfterMs; state.readyAt = Date.now() + result.retryAfterMs;
+            feedback(result.reason === 'queue-full' ? 'Two scenes are already waiting. Let the current take finish.' : 'The next take is cooling down. Stand by.', true);
           } else { throw new Error(); }
-        } catch { $('feedback').textContent = 'Could not confirm the trigger. Check the overlay before trying again.'; }
-        finally { sending = false; updateButton(); }
+        } catch { feedback('Could not confirm the trigger. Check the monitor before trying again.', true); }
+        finally { state.sending = false; updateButton(); }
       });
-      setInterval(updateButton, 200);
+
+      // 1–5 pick a treatment, Enter rolls. Ignored while typing or when a modifier is held.
+      document.addEventListener('keydown', (event) => {
+        if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
+        const target = event.target;
+        if (target.isContentEditable || ['TEXTAREA', 'SELECT'].includes(target.tagName) || (target.tagName === 'INPUT' && target.type !== 'radio')) return;
+        const index = Number(event.key) - 1;
+        if (Number.isInteger(index) && index >= 0 && index < radios().length) {
+          const radio = radios()[index];
+          radio.checked = true;
+          if (document.activeElement?.name === 'style') radio.focus();
+          event.preventDefault();
+        } else if (event.key === 'Enter' && (target === document.body || target.type === 'radio')) {
+          event.preventDefault();
+          $('trigger-form').requestSubmit();
+        }
+      });
+
+      // Render the preview at true 1920×1080 and scale it down, so overlay type sizes match OBS exactly.
+      const fit = () => { $('preview').style.transform = `scale(${$('screen').clientWidth / 1920})`; };
+      new ResizeObserver(fit).observe($('screen'));
+      fit();
+
+      const tick = () => { updateButton(); if (!reducedMotion) requestAnimationFrame(tick); };
+      if (reducedMotion) setInterval(updateButton, 250); else requestAnimationFrame(tick);
       setInterval(poll, 3000);
       void poll();
+      connect();
     })();
   </script>
 </body>
